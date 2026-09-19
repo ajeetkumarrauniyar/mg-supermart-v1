@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/jest": "^29.5.11",
     "fast-check": "^3.15.1",
     "jest": "^29.7.0",
@@ -30,7 +31,6 @@
     "@mg-mart/types": "workspace:*",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^24.3.1",
     "axios": "^1.6.7",
