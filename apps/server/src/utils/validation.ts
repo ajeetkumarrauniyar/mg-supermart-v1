@@ -13,6 +13,7 @@ import { CreateUserInput, UpdateUserInput } from "../models/User.js";
 import { CreateProductInput, UpdateProductInput } from "../models/Product.js";
 import { CreateOrderInput } from "../models/Order.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
+import type { AddressInput } from "../models/Address.js";
 
 /**
  * Custom error class for validation failures
@@ -330,4 +331,64 @@ const isValidUrl = (url: string): boolean => {
   } catch {
     return false;
   }
+};
+
+/**
+ * Validates and normalises an address payload (D-012 §4).
+ * Shape only — serviceability is never a validation concern. `lat`/`lng` are
+ * required and must be real coordinates; `pincode` is optional and never gating.
+ * Errors name the field so the client can highlight it without erasing input.
+ * @param body - Raw request body
+ * @returns A clean AddressInput (optional keys omitted when absent)
+ * @throws ValidationError when a field is missing or malformed
+ */
+export const validateAddressInput = (body: Record<string, unknown>): AddressInput => {
+  const str = (key: keyof AddressInput, required: boolean, max = 200): string | undefined => {
+    const v = body[key];
+    if (v === undefined || v === null || (typeof v === "string" && v.trim() === "")) {
+      if (required) throw new ValidationError(`${key} is required`, key);
+      return undefined;
+    }
+    if (typeof v !== "string") throw new ValidationError(`${key} must be a string`, key);
+    if (v.trim().length > max) throw new ValidationError(`${key} is too long`, key);
+    return v.trim();
+  };
+
+  const num = (key: keyof AddressInput, required: boolean, min: number, max: number): number | undefined => {
+    const v = body[key];
+    if (v === undefined || v === null || v === "") {
+      if (required) throw new ValidationError(`${key} is required`, key);
+      return undefined;
+    }
+    const n = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(n)) throw new ValidationError(`${key} must be a number`, key);
+    if (n < min || n > max) throw new ValidationError(`${key} must be between ${min} and ${max}`, key);
+    return n;
+  };
+
+  const phone = str("phone", true, 20)!;
+  if (!validatePhoneNumber(phone)) {
+    throw new ValidationError("Valid phone number is required", "phone");
+  }
+
+  const pincode = str("pincode", false, 10);
+  if (pincode !== undefined && !/^\d{6}$/.test(pincode)) {
+    throw new ValidationError("pincode must be 6 digits", "pincode");
+  }
+
+  const landmark = str("landmark", false);
+  const accuracyM = num("accuracyM", false, 0, 100_000);
+
+  return {
+    label: str("label", true, 40)!,
+    recipientName: str("recipientName", true, 100)!,
+    phone,
+    line1: str("line1", true)!,
+    ...(landmark !== undefined && { landmark }),
+    area: str("area", true)!,
+    ...(pincode !== undefined && { pincode }),
+    lat: num("lat", true, -90, 90)!,
+    lng: num("lng", true, -180, 180)!,
+    ...(accuracyM !== undefined && { accuracyM }),
+  };
 };

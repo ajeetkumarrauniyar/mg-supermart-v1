@@ -16,6 +16,7 @@ import orderRoutes from "./orders.js";
 import imageManagementRoutes from "./image-management.js";
 import adminRoutes from "./admin.js";
 import categorySyncQueueRoutes from "./category-sync-queue.js";
+import addressRoutes from "./addresses.js";
 
 const router: Router = Router();
 
@@ -28,5 +29,6 @@ router.use("/v1/orders", orderRoutes);
 router.use("/v1", imageManagementRoutes);
 router.use("/v1/admin", adminRoutes);
 router.use("/v1/category-sync-queue", categorySyncQueueRoutes);
+router.use("/v1/addresses", addressRoutes);
 
 export default router;
