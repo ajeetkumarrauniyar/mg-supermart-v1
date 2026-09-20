@@ -201,13 +201,13 @@ describe("T4.2 legacy user.address is left intact", () => {
     const res = await request(app)
       .put("/api/v1/users/profile")
       .set(auth(a.token))
-      .send({ address: { street: "Old St", city: "Pipra", state: "Bihar", zipCode: "845416" } });
+      .send({ address: { street: "Old St", city: "Pipra", state: "TestState", zipCode: "845416" } });
     expect(res.status).toBe(200);
     const profile = await request(app).get("/api/v1/users/profile").set(auth(a.token));
     expect(profile.body.data.address).toEqual({
       street: "Old St",
       city: "Pipra",
-      state: "Bihar",
+      state: "TestState",
       zipCode: "845416",
     });
   });

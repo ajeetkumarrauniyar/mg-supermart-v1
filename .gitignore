@@ -64,3 +64,6 @@ apps/server/key.json
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+
+# Phase 1 server contract docs (the repo ignores *.md by default)
+!apps/server/docs/*.md

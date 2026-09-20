@@ -1,0 +1,556 @@
+{
+  "POST /api/v1/addresses → 201": {
+    "success": true,
+    "message": "Address saved",
+    "data": {
+      "addressId": "ADDRESS_ID",
+      "label": "Home",
+      "recipientName": "Sita Devi",
+      "phone": "9876543210",
+      "line1": "Ward 4, near Shiv Mandir",
+      "landmark": "Opp. primary school",
+      "area": "Pipra Bazar",
+      "pincode": "845416",
+      "lat": 26.506435,
+      "lng": 84.985065,
+      "accuracyM": 12,
+      "isDefault": true,
+      "createdAt": "2026-09-20T10:00:00.000Z",
+      "updatedAt": "2026-09-20T10:00:00.000Z",
+      "serviceability": {
+        "status": "serviceable",
+        "distanceKm": 2,
+        "radiusKm": 5
+      }
+    }
+  },
+  "POST /api/v1/addresses (7 km away) → 201": {
+    "success": true,
+    "message": "Address saved",
+    "data": {
+      "addressId": "ADDRESS_ID",
+      "label": "Farm",
+      "recipientName": "Sita Devi",
+      "phone": "9876543210",
+      "line1": "Khet road",
+      "area": "Bariarpur",
+      "lat": 26.467176,
+      "lng": 84.915493,
+      "isDefault": false,
+      "createdAt": "2026-09-20T10:00:00.000Z",
+      "updatedAt": "2026-09-20T10:00:00.000Z",
+      "serviceability": {
+        "status": "not_serviceable",
+        "distanceKm": 7,
+        "radiusKm": 5,
+        "reason": "OUTSIDE_RADIUS"
+      }
+    }
+  },
+  "POST /api/v1/addresses (missing fields) → 400": {
+    "success": false,
+    "error": "phone is required",
+    "field": "phone",
+    "code": "VALIDATION_ERROR"
+  },
+  "GET /api/v1/addresses → 200": {
+    "success": true,
+    "data": [
+      {
+        "addressId": "ADDRESS_ID",
+        "label": "Home",
+        "recipientName": "Sita Devi",
+        "phone": "9876543210",
+        "line1": "Ward 4, near Shiv Mandir",
+        "landmark": "Opp. primary school",
+        "area": "Pipra Bazar",
+        "pincode": "845416",
+        "lat": 26.506435,
+        "lng": 84.985065,
+        "accuracyM": 12,
+        "isDefault": true,
+        "createdAt": "2026-09-20T10:00:00.000Z",
+        "updatedAt": "2026-09-20T10:00:00.000Z",
+        "serviceability": {
+          "status": "serviceable",
+          "distanceKm": 2,
+          "radiusKm": 5
+        }
+      },
+      {
+        "addressId": "ADDRESS_ID",
+        "label": "Farm",
+        "recipientName": "Sita Devi",
+        "phone": "9876543210",
+        "line1": "Khet road",
+        "area": "Bariarpur",
+        "lat": 26.467176,
+        "lng": 84.915493,
+        "isDefault": false,
+        "createdAt": "2026-09-20T10:00:00.000Z",
+        "updatedAt": "2026-09-20T10:00:00.000Z",
+        "serviceability": {
+          "status": "not_serviceable",
+          "distanceKm": 7,
+          "radiusKm": 5,
+          "reason": "OUTSIDE_RADIUS"
+        }
+      }
+    ]
+  },
+  "GET /api/v1/cart → 200": {
+    "success": true,
+    "data": {
+      "items": [
+        {
+          "productId": "SEED-OIL-MUSTARD-1L",
+          "name": "Mustard Oil 1 L",
+          "price": 180,
+          "imageUrl": "https://seed.mg.test/SEED-OIL-MUSTARD-1L.png",
+          "unit": "liter",
+          "quantity": 1,
+          "addedAt": "2026-09-20T10:00:00.000Z",
+          "isOrderable": true,
+          "minOrderExempt": true
+        },
+        {
+          "productId": "SEED-RICE-5KG",
+          "name": "Sona Masoori Rice 5 kg",
+          "price": 320,
+          "imageUrl": "https://seed.mg.test/SEED-RICE-5KG.png",
+          "unit": "pack",
+          "quantity": 1,
+          "addedAt": "2026-09-20T10:00:00.000Z",
+          "isOrderable": true,
+          "minOrderExempt": false
+        }
+      ],
+      "totalItems": 2,
+      "totalAmount": 500
+    }
+  },
+  "POST /api/v1/cart/add (not orderable) → 422": {
+    "success": false,
+    "error": "Paneer 200 g (not available) is not available right now",
+    "field": "productId",
+    "code": "LINE_NOT_ORDERABLE",
+    "reason": "UNAVAILABLE",
+    "productId": "SEED-UNAVAIL-PANEER"
+  },
+  "POST /api/v1/cart/quote (below minimum) → 200": {
+    "success": true,
+    "data": {
+      "addressId": "ADDRESS_ID",
+      "serviceability": {
+        "status": "serviceable",
+        "distanceKm": 2,
+        "radiusKm": 5
+      },
+      "bill": {
+        "lines": [
+          {
+            "productId": "SEED-OIL-MUSTARD-1L",
+            "name": "Mustard Oil 1 L",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": true,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-RICE-5KG",
+            "name": "Sona Masoori Rice 5 kg",
+            "unitPrice": 320,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 320
+          }
+        ],
+        "subtotal": 500,
+        "eligibleAmount": 320,
+        "minOrderValue": 500,
+        "minOrderMet": false,
+        "shortfall": 180,
+        "deliveryFee": 40,
+        "handlingFee": 5,
+        "total": 545,
+        "orderable": false,
+        "blockers": [
+          {
+            "code": "ORDER_BELOW_MINIMUM",
+            "message": "Add ₹180 more of eligible items to reach the ₹500 minimum",
+            "shortfall": 180
+          }
+        ],
+        "appliedConfig": {
+          "minOrderValue": 500,
+          "deliveryFee": {
+            "amount": 40,
+            "waivedAtOrAbove": null
+          },
+          "handlingFee": {
+            "amount": 5,
+            "waivedAtOrAbove": null
+          },
+          "deliveryRadiusKm": 5
+        }
+      },
+      "orderable": false,
+      "blockers": [
+        {
+          "code": "ORDER_BELOW_MINIMUM",
+          "message": "Add ₹180 more of eligible items to reach the ₹500 minimum",
+          "shortfall": 180
+        }
+      ]
+    }
+  },
+  "POST /api/v1/cart/quote (unserviceable address) → 200": {
+    "success": true,
+    "data": {
+      "addressId": "ADDRESS_ID",
+      "serviceability": {
+        "status": "not_serviceable",
+        "distanceKm": 7,
+        "radiusKm": 5,
+        "reason": "OUTSIDE_RADIUS"
+      },
+      "bill": {
+        "lines": [
+          {
+            "productId": "SEED-OIL-MUSTARD-1L",
+            "name": "Mustard Oil 1 L",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": true,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-RICE-5KG",
+            "name": "Sona Masoori Rice 5 kg",
+            "unitPrice": 320,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 320
+          }
+        ],
+        "subtotal": 500,
+        "eligibleAmount": 320,
+        "minOrderValue": 500,
+        "minOrderMet": false,
+        "shortfall": 180,
+        "deliveryFee": 40,
+        "handlingFee": 5,
+        "total": 545,
+        "orderable": false,
+        "blockers": [
+          {
+            "code": "ORDER_BELOW_MINIMUM",
+            "message": "Add ₹180 more of eligible items to reach the ₹500 minimum",
+            "shortfall": 180
+          },
+          {
+            "code": "ADDRESS_NOT_SERVICEABLE",
+            "message": "This address is 7 km away; we deliver within 5 km",
+            "distanceKm": 7,
+            "radiusKm": 5
+          }
+        ],
+        "appliedConfig": {
+          "minOrderValue": 500,
+          "deliveryFee": {
+            "amount": 40,
+            "waivedAtOrAbove": null
+          },
+          "handlingFee": {
+            "amount": 5,
+            "waivedAtOrAbove": null
+          },
+          "deliveryRadiusKm": 5
+        }
+      },
+      "orderable": false,
+      "blockers": [
+        {
+          "code": "ORDER_BELOW_MINIMUM",
+          "message": "Add ₹180 more of eligible items to reach the ₹500 minimum",
+          "shortfall": 180
+        },
+        {
+          "code": "ADDRESS_NOT_SERVICEABLE",
+          "message": "This address is 7 km away; we deliver within 5 km",
+          "distanceKm": 7,
+          "radiusKm": 5
+        }
+      ]
+    }
+  },
+  "POST /api/v1/cart/quote (orderable) → 200": {
+    "success": true,
+    "data": {
+      "addressId": "ADDRESS_ID",
+      "serviceability": {
+        "status": "serviceable",
+        "distanceKm": 2,
+        "radiusKm": 5
+      },
+      "bill": {
+        "lines": [
+          {
+            "productId": "SEED-ATTA-5KG",
+            "name": "Chakki Atta 5 kg",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-OIL-MUSTARD-1L",
+            "name": "Mustard Oil 1 L",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": true,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-RICE-5KG",
+            "name": "Sona Masoori Rice 5 kg",
+            "unitPrice": 320,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 320
+          }
+        ],
+        "subtotal": 680,
+        "eligibleAmount": 500,
+        "minOrderValue": 500,
+        "minOrderMet": true,
+        "shortfall": 0,
+        "deliveryFee": 40,
+        "handlingFee": 5,
+        "total": 725,
+        "orderable": true,
+        "blockers": [],
+        "appliedConfig": {
+          "minOrderValue": 500,
+          "deliveryFee": {
+            "amount": 40,
+            "waivedAtOrAbove": null
+          },
+          "handlingFee": {
+            "amount": 5,
+            "waivedAtOrAbove": null
+          },
+          "deliveryRadiusKm": 5
+        }
+      },
+      "orderable": true,
+      "blockers": []
+    }
+  },
+  "POST /api/v1/orders (missing idempotencyKey) → 400": {
+    "success": false,
+    "error": "idempotencyKey is required so retries do not create duplicate orders",
+    "field": "idempotencyKey",
+    "code": "IDEMPOTENCY_KEY_REQUIRED"
+  },
+  "POST /api/v1/orders → 201": {
+    "success": true,
+    "message": "Order created successfully",
+    "data": {
+      "orderId": "ORDER_ID",
+      "userId": "USER_ID",
+      "items": [
+        {
+          "productId": "SEED-ATTA-5KG",
+          "name": "Chakki Atta 5 kg",
+          "price": 180,
+          "quantity": 1,
+          "unitPrice": 180,
+          "lineTotal": 180,
+          "minOrderExempt": false
+        },
+        {
+          "productId": "SEED-OIL-MUSTARD-1L",
+          "name": "Mustard Oil 1 L",
+          "price": 180,
+          "quantity": 1,
+          "unitPrice": 180,
+          "lineTotal": 180,
+          "minOrderExempt": true
+        },
+        {
+          "productId": "SEED-RICE-5KG",
+          "name": "Sona Masoori Rice 5 kg",
+          "price": 320,
+          "quantity": 1,
+          "unitPrice": 320,
+          "lineTotal": 320,
+          "minOrderExempt": false
+        }
+      ],
+      "totalAmount": 725,
+      "status": "pending",
+      "shippingAddress": {
+        "street": "Ward 4, near Shiv Mandir, Opp. primary school",
+        "city": "Pipra Bazar",
+        "state": "Bihar",
+        "zipCode": "845416"
+      },
+      "paymentDetails": {
+        "paymentMethod": "COD"
+      },
+      "paymentStatus": "pending",
+      "bill": {
+        "lines": [
+          {
+            "productId": "SEED-ATTA-5KG",
+            "name": "Chakki Atta 5 kg",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-OIL-MUSTARD-1L",
+            "name": "Mustard Oil 1 L",
+            "unitPrice": 180,
+            "quantity": 1,
+            "minOrderExempt": true,
+            "isOrderable": true,
+            "lineTotal": 180
+          },
+          {
+            "productId": "SEED-RICE-5KG",
+            "name": "Sona Masoori Rice 5 kg",
+            "unitPrice": 320,
+            "quantity": 1,
+            "minOrderExempt": false,
+            "isOrderable": true,
+            "lineTotal": 320
+          }
+        ],
+        "subtotal": 680,
+        "eligibleAmount": 500,
+        "minOrderValue": 500,
+        "minOrderMet": true,
+        "shortfall": 0,
+        "deliveryFee": 40,
+        "handlingFee": 5,
+        "total": 725,
+        "orderable": true,
+        "blockers": [],
+        "appliedConfig": {
+          "minOrderValue": 500,
+          "deliveryFee": {
+            "amount": 40,
+            "waivedAtOrAbove": null
+          },
+          "handlingFee": {
+            "amount": 5,
+            "waivedAtOrAbove": null
+          },
+          "deliveryRadiusKm": 5
+        }
+      },
+      "appliedConfig": {
+        "minOrderValue": 500,
+        "deliveryFee": {
+          "amount": 40,
+          "waivedAtOrAbove": null
+        },
+        "handlingFee": {
+          "amount": 5,
+          "waivedAtOrAbove": null
+        },
+        "deliveryRadiusKm": 5
+      },
+      "addressSnapshot": {
+        "addressId": "ADDRESS_ID",
+        "label": "Home",
+        "recipientName": "Sita Devi",
+        "phone": "9876543210",
+        "line1": "Ward 4, near Shiv Mandir",
+        "landmark": "Opp. primary school",
+        "area": "Pipra Bazar",
+        "pincode": "845416",
+        "lat": 26.506435,
+        "lng": 84.985065,
+        "accuracyM": 12,
+        "distanceKm": 2,
+        "radiusKm": 5
+      },
+      "idempotencyKey": "client-generated-uuid",
+      "createdAt": "2026-09-20T10:00:00.000Z",
+      "updatedAt": "2026-09-20T10:00:00.000Z"
+    }
+  },
+  "POST /api/v1/orders (replay, same key) → 200": {
+    "success": true,
+    "message": "Order already placed",
+    "replayed": true,
+    "data": "…the original order…"
+  },
+  "POST /api/v1/orders (blocked) → 422": {
+    "success": false,
+    "error": "Your cart is empty",
+    "code": "CART_EMPTY",
+    "blockers": [
+      {
+        "code": "CART_EMPTY",
+        "message": "Your cart is empty"
+      }
+    ],
+    "serviceability": {
+      "status": "serviceable",
+      "distanceKm": 2,
+      "radiusKm": 5
+    }
+  },
+  "GET /api/v1/orders (customer) → 200": {
+    "success": true,
+    "data": {
+      "orders": "…[order] as above…",
+      "pagination": {
+        "total": 1,
+        "limit": 20,
+        "offset": 0,
+        "hasMore": false
+      }
+    }
+  },
+  "GET /api/v1/products/:id → 200": {
+    "success": true,
+    "data": {
+      "productId": "SEED-SUGAR-1KG",
+      "name": "Sugar 1 kg",
+      "description": "Loose sugar, 1 kg (min-order exempt)",
+      "price": 45,
+      "category": "Pantry",
+      "categoryManuallySet": false,
+      "imageUrl": "https://seed.mg.test/SEED-SUGAR-1KG.png",
+      "stock": 50,
+      "unit": "kg",
+      "isFeatured": false,
+      "mrp": 45,
+      "isActive": true,
+      "isAvailable": true,
+      "minOrderExempt": true,
+      "isOrderable": true,
+      "createdAt": "2026-09-20T10:00:00.000Z",
+      "updatedAt": "2026-09-20T10:00:00.000Z"
+    }
+  },
+  "GET /api/v1/products/:id (inactive, customer) → 404": {
+    "success": false,
+    "error": "Product not found",
+    "code": "NOT_FOUND"
+  }
+}
