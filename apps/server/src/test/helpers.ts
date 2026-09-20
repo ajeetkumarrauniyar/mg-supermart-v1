@@ -179,3 +179,43 @@ export const hashSeedProducts = async (): Promise<string> => {
     .sort((a, b) => String(a.productId).localeCompare(String(b.productId)));
   return createHash("sha256").update(JSON.stringify(docs)).digest("hex");
 };
+
+/** Adds (productId, quantity) pairs to a user's cart via the API. */
+export const fillCart = async (token: string, lines: Array<[string, number]>): Promise<void> => {
+  const app = await getApp();
+  for (const [productId, quantity] of lines) {
+    const res = await request(app).post("/api/v1/cart/add").set(auth(token)).send({ productId, quantity });
+    if (res.status !== 200) {
+      throw new Error(`cart add ${productId} failed: ${res.status} ${JSON.stringify(res.body)}`);
+    }
+  }
+};
+
+/** Saves an address via the API and returns its id. */
+export const saveAddress = async (
+  token: string,
+  point: { lat: number; lng: number },
+  overrides: Record<string, unknown> = {}
+): Promise<string> => {
+  const app = await getApp();
+  const res = await request(app)
+    .post("/api/v1/addresses")
+    .set(auth(token))
+    .send({
+      label: "Home",
+      recipientName: "Sita Devi",
+      phone: "9876543210",
+      line1: "Ward 4, near Shiv Mandir",
+      landmark: "Opp. primary school",
+      area: "Pipra Bazar",
+      pincode: "845416",
+      lat: point.lat,
+      lng: point.lng,
+      accuracyM: 12,
+      ...overrides,
+    });
+  if (res.status !== 201) {
+    throw new Error(`address save failed: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+  return res.body.data.addressId as string;
+};

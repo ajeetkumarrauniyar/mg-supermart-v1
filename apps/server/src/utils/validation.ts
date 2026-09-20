@@ -11,7 +11,7 @@
 
 import { CreateUserInput, UpdateUserInput } from "../models/User.js";
 import { CreateProductInput, UpdateProductInput } from "../models/Product.js";
-import { CreateOrderInput } from "../models/Order.js";
+import type { CreateOrderRequest } from "../models/Order.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
 import type { AddressInput } from "../models/Address.js";
 
@@ -206,44 +206,36 @@ export const validateProductFlags = (data: {
 };
 
 /**
- * Validates order creation data including items, shipping address, and payment details
- * Ensures order has valid items and complete shipping/payment information
- * @param orderData - Order data to validate for creation
- * @throws ValidationError when validation rules are not met
+ * Validates the POST /orders body (D-004, D-005, D-012 §7).
+ * Shape: { addressId, paymentMethod: "COD", idempotencyKey }. The cart, prices,
+ * rules and serviceability are read server-side inside the transaction — the
+ * client sends none of them. The idempotency key is checked by the controller
+ * so it can carry its own error code.
+ * @param body - Raw request body
+ * @returns The validated request
+ * @throws ValidationError when a field is missing or unsupported
  */
-export const validateCreateOrder = (orderData: CreateOrderInput): void => {
-  if (!orderData.items || orderData.items.length === 0) {
-    throw new ValidationError("Order must contain at least one item", "items");
+export const validateCreateOrder = (body: Record<string, unknown>): CreateOrderRequest => {
+  const addressId = body.addressId;
+  if (typeof addressId !== "string" || addressId.trim() === "") {
+    throw new ValidationError("addressId is required", "addressId");
   }
 
-  // Validate each order item
-  for (const item of orderData.items) {
-    if (
-      !item.productId ||
-      !item.name ||
-      item.price <= 0 ||
-      item.quantity <= 0
-    ) {
-      throw new ValidationError("Invalid order item", "items");
-    }
+  const paymentMethod = body.paymentMethod;
+  if (paymentMethod === undefined || paymentMethod === null || paymentMethod === "") {
+    throw new ValidationError("paymentMethod is required", "paymentMethod");
+  }
+  if (paymentMethod !== "COD") {
+    // D-005: cash on delivery only in M1; "Online" is reserved, not accepted
+    throw new ValidationError("Only COD is supported at the moment", "paymentMethod");
   }
 
-  if (
-    !orderData.shippingAddress ||
-    !orderData.shippingAddress.street ||
-    !orderData.shippingAddress.city ||
-    !orderData.shippingAddress.state ||
-    !orderData.shippingAddress.zipCode
-  ) {
-    throw new ValidationError(
-      "Complete shipping address is required",
-      "shippingAddress"
-    );
+  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+  if (idempotencyKey.length > 128) {
+    throw new ValidationError("idempotencyKey is too long", "idempotencyKey");
   }
 
-  if (!orderData.paymentDetails || !orderData.paymentDetails.paymentMethod) {
-    throw new ValidationError("Payment details are required", "paymentDetails");
-  }
+  return { addressId: addressId.trim(), paymentMethod: "COD", idempotencyKey };
 };
 
 /**

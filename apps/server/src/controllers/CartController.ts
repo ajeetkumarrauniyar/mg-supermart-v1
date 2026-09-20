@@ -19,6 +19,12 @@ import { ApiError } from "../utils/errorHandler.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
 import { lineBlocker } from "../domain/orderability.js";
 import type { ProductResponse } from "../models/Product.js";
+import {
+  QuoteService,
+  AddressNotOwnedError,
+  noAddressServiceability,
+} from "../services/QuoteService.js";
+import { requireStoreConfig } from "./AddressController.js";
 
 /** D-013: only the derived verdict gates carting; stock is informational in M1. */
 const assertOrderable = (product: ProductResponse): void => {
@@ -39,11 +45,59 @@ const assertOrderable = (product: ProductResponse): void => {
 export class CartController {
   private cartRepository: CartRepository;
   private productRepository: ProductRepository;
+  private quoteService: QuoteService;
 
   constructor() {
     this.cartRepository = new CartRepository();
     this.productRepository = new ProductRepository();
+    this.quoteService = new QuoteService();
   }
+
+  /**
+   * POST /cart/quote { addressId? } — the authoritative bill for this cart
+   * and address (D-012 §6, D-014 §4). Always 200 with serviceability, bill,
+   * orderable and blockers; a quote is a report, never an HTTP error. The
+   * only exceptions: 503 CONFIG_UNAVAILABLE, and 403 ADDRESS_NOT_OWNED for an
+   * explicit addressId that is not the caller's.
+   */
+  quote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new ApiError("User not authenticated", 401);
+      }
+
+      const body = (req.body ?? {}) as { addressId?: unknown };
+      const addressId =
+        typeof body.addressId === "string" && body.addressId.trim() !== ""
+          ? body.addressId.trim()
+          : undefined;
+
+      const config = requireStoreConfig();
+      const quote = await this.quoteService.assemble(userId, addressId, config);
+
+      res.json({
+        success: true,
+        data: {
+          addressId: quote.address?.addressId ?? null,
+          serviceability: quote.serviceability ?? noAddressServiceability(config),
+          bill: quote.bill,
+          orderable: quote.bill.orderable,
+          blockers: quote.bill.blockers,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AddressNotOwnedError) {
+        next(new ApiError("Address not found for this account", 403, "addressId", "ADDRESS_NOT_OWNED"));
+        return;
+      }
+      next(error);
+    }
+  };
 
   /**
    * Get user's current cart with all items and totals
