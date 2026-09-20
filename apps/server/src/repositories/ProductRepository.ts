@@ -21,6 +21,7 @@ import {
   ProductResponse,
   ProductCategory,
 } from "../models/Product.js";
+import { normalizeProductFlags, deriveOrderable } from "../domain/orderability.js";
 
 /**
  * Repository class for product catalog operations
@@ -151,7 +152,10 @@ export class ProductRepository {
       offset?: number;
       category?: ProductCategory;
       isFeatured?: boolean;
+      /** Re-mapped to the derived isOrderable (D-013); stock is not consulted. */
       inStock?: boolean;
+      /** Admin only: include products with isActive=false. */
+      includeInactive?: boolean;
     } = {}
   ): Promise<ProductResponse[]> {
     let query = this.collection.orderBy("createdAt", "desc");
@@ -166,11 +170,6 @@ export class ProductRepository {
       query = query.where("isFeatured", "==", options.isFeatured);
     }
 
-    // Apply stock availability filter
-    if (options.inStock) {
-      query = query.where("stock", ">", 0);
-    }
-
     // Apply pagination
     if (options.limit) {
       query = query.limit(options.limit);
@@ -181,7 +180,24 @@ export class ProductRepository {
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map((doc) => this.toResponse(doc.data() as Product));
+    let products = snapshot.docs.map((doc) => this.toResponse(doc.data() as Product));
+
+    // PD-4 (explicitly temporary, M1): customer listings exclude isActive=false
+    // IN MEMORY, after the Firestore query, so documents that predate the flag
+    // (field missing) stay visible. Known limitation: because this runs after
+    // Firestore applied limit/offset, a requested page may contain fewer than
+    // `limit` visible products when inactive documents fall inside it. The
+    // query-level where("isActive","==",true), the backfill of missing flags
+    // and the composite indexes are deferred to Phase 6.
+    if (!options.includeInactive) {
+      products = products.filter((product) => product.isActive !== false);
+    }
+
+    if (options.inStock) {
+      products = products.filter((product) => product.isOrderable);
+    }
+
+    return products;
   }
 
   /**
@@ -259,6 +275,8 @@ export class ProductRepository {
    * @returns Product response object safe for API responses
    */
   private toResponse(product: Product): ProductResponse {
+    // D-013: persist the facts, derive the verdict. isOrderable is never stored.
+    const flags = normalizeProductFlags(product);
     return {
       productId: product.productId,
       name: product.name,
@@ -270,6 +288,9 @@ export class ProductRepository {
       stock: product.stock,
       unit: product.unit,
       isFeatured: product.isFeatured,
+      ...(product.mrp !== undefined && { mrp: product.mrp }),
+      ...flags,
+      isOrderable: deriveOrderable(flags),
       createdAt: timestampToString(product.createdAt),
       updatedAt: timestampToString(product.updatedAt),
     };

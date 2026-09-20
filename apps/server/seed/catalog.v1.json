@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "description": "Deterministic MG Supermart seed catalog for Phases 1-5 (D-006). Prices in whole rupees. Eligible price points: 320+180=500, 320+179=499, 320+181=501.",
+  "admin": {
+    "userId": "SEED-ADMIN",
+    "email": "seed-admin@mg.test",
+    "password": "SeedAdmin123!",
+    "name": "Seed Admin",
+    "phoneNumber": "9800000000"
+  },
+  "products": [
+    { "productId": "SEED-RICE-5KG",      "name": "Sona Masoori Rice 5 kg",        "description": "Everyday rice, 5 kg bag",                    "price": 320, "mrp": 340, "stock": 40, "category": "Pantry",             "unit": "pack",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-ATTA-5KG",      "name": "Chakki Atta 5 kg",              "description": "Whole wheat flour, 5 kg",                    "price": 180, "mrp": 195, "stock": 35, "category": "Pantry",             "unit": "pack",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-DAL-CHANA-1KG", "name": "Chana Dal 1 kg",                "description": "Split Bengal gram, 1 kg",                    "price": 179, "mrp": 190, "stock": 25, "category": "Pantry",             "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-DAL-MOONG-1KG", "name": "Moong Dal 1 kg",                "description": "Split green gram, 1 kg",                     "price": 181, "mrp": 195, "stock": 25, "category": "Pantry",             "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-DAL-TOOR-1KG",  "name": "Toor Dal 1 kg",                 "description": "Split pigeon pea, 1 kg",                     "price": 160, "mrp": 170, "stock": 25, "category": "Pantry",             "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-SALT-1KG",      "name": "Iodised Salt 1 kg",             "description": "Free-flowing iodised salt",                  "price": 25,  "mrp": 28,  "stock": 80, "category": "Pantry",             "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-TEA-250G",      "name": "Tea 250 g",                     "description": "Strong Assam blend, 250 g",                  "price": 120, "mrp": 130, "stock": 30, "category": "Beverages",          "unit": "gram",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-BISCUIT-PACK",  "name": "Glucose Biscuits (pack of 6)",  "description": "Family pack, 6 × 75 g",                      "price": 60,  "mrp": 66,  "stock": 50, "category": "Snacks",             "unit": "pack",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-SOAP-4PACK",    "name": "Bathing Soap (4 × 100 g)",      "description": "Value pack of four",                         "price": 96,  "mrp": 108, "stock": 40, "category": "Personal Care",      "unit": "pack",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-DETERGENT-1KG", "name": "Detergent Powder 1 kg",         "description": "Top-load detergent, 1 kg",                   "price": 110, "mrp": 120, "stock": 30, "category": "Household",          "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-TOOTHPASTE",    "name": "Toothpaste 200 g",              "description": "Fluoride toothpaste, 200 g",                 "price": 95,  "mrp": 105, "stock": 30, "category": "Personal Care",      "unit": "gram",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-POTATO-1KG",    "name": "Potato 1 kg",                   "description": "Fresh potatoes",                             "price": 30,  "mrp": 30,  "stock": 60, "category": "Fruits & Vegetables","unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-ONION-1KG",     "name": "Onion 1 kg",                    "description": "Fresh onions",                               "price": 40,  "mrp": 40,  "stock": 60, "category": "Fruits & Vegetables","unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-BREAD",         "name": "Sandwich Bread 400 g",          "description": "Sliced white bread",                         "price": 45,  "mrp": 45,  "stock": 20, "category": "Bakery",             "unit": "piece", "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-EGGS-DOZEN",    "name": "Eggs (dozen)",                  "description": "Farm eggs, 12",                              "price": 84,  "mrp": 84,  "stock": 30, "category": "Dairy & Eggs",       "unit": "dozen", "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-COLD-DRINK-2L", "name": "Cola 2 L",                      "description": "Carbonated soft drink, 2 L",                 "price": 90,  "mrp": 95,  "stock": 24, "category": "Beverages",          "unit": "liter", "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+
+    { "productId": "SEED-OIL-REFINED-1L","name": "Refined Sunflower Oil 1 L",     "description": "Refined oil pouch, 1 L (min-order exempt)",  "price": 150, "mrp": 160, "stock": 30, "category": "Pantry",             "unit": "liter", "isActive": true,  "isAvailable": true,  "minOrderExempt": true },
+    { "productId": "SEED-OIL-MUSTARD-1L","name": "Mustard Oil 1 L",               "description": "Kachi ghani mustard oil, 1 L (min-order exempt)","price": 180, "mrp": 190, "stock": 30, "category": "Pantry",         "unit": "liter", "isActive": true,  "isAvailable": true,  "minOrderExempt": true },
+    { "productId": "SEED-SUGAR-1KG",     "name": "Sugar 1 kg",                    "description": "Loose sugar, 1 kg (min-order exempt)",       "price": 45,  "mrp": 45,  "stock": 50, "category": "Pantry",             "unit": "kg",    "isActive": true,  "isAvailable": true,  "minOrderExempt": true },
+    { "productId": "SEED-MILK-1L",       "name": "Toned Milk 1 L",                "description": "Pouch milk, 1 L (min-order exempt)",         "price": 56,  "mrp": 56,  "stock": 0,  "category": "Dairy & Eggs",       "unit": "liter", "isActive": true,  "isAvailable": true,  "minOrderExempt": true },
+
+    { "productId": "SEED-INACTIVE-GHEE", "name": "Desi Ghee 500 g (delisted)",    "description": "isActive=false: hidden from customers",      "price": 350, "mrp": 380, "stock": 10, "category": "Dairy & Eggs",       "unit": "gram",  "isActive": false, "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-UNAVAIL-PANEER","name": "Paneer 200 g (not available)",  "description": "isAvailable=false: visible, cannot be ordered","price": 90, "mrp": 95,  "stock": 15, "category": "Dairy & Eggs",       "unit": "gram",  "isActive": true,  "isAvailable": false, "minOrderExempt": false },
+    { "productId": "SEED-ZEROSTOCK-BESAN","name": "Besan 500 g",                  "description": "stock=0 but orderable per flags (D-013)",    "price": 55,  "mrp": 60,  "stock": 0,  "category": "Pantry",             "unit": "gram",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-NOFLAGS-MAGGI",  "name": "Instant Noodles (pack of 4)",  "description": "Legacy document: no flag fields at all",     "price": 56,  "mrp": 56,  "stock": 40, "category": "Snacks",             "unit": "pack" }
+  ]
+}

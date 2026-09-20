@@ -17,6 +17,24 @@ import {
 } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
+import { lineBlocker } from "../domain/orderability.js";
+import type { ProductResponse } from "../models/Product.js";
+
+/** D-013: only the derived verdict gates carting; stock is informational in M1. */
+const assertOrderable = (product: ProductResponse): void => {
+  const reason = lineBlocker(product);
+  if (reason !== null) {
+    throw new ApiError(
+      reason === "INACTIVE"
+        ? `${product.name} is no longer listed`
+        : `${product.name} is not available right now`,
+      422,
+      "productId",
+      "LINE_NOT_ORDERABLE",
+      { reason, productId: product.productId }
+    );
+  }
+};
 
 export class CartController {
   private cartRepository: CartRepository;
@@ -89,18 +107,12 @@ export class CartController {
       validateRequired(quantity, "quantity");
       validatePositiveNumber(quantity, "Quantity");
 
-      // Verify product exists and has sufficient stock
+      // Verify product exists and is orderable (D-013)
       const product = await this.productRepository.findById(productId);
       if (!product) {
-        throw new ApiError("Product not found", 404);
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
-
-      if (product.stock < quantity) {
-        throw new ApiError(
-          `Insufficient stock. Available: ${product.stock}`,
-          400
-        );
-      }
+      assertOrderable(product);
 
       // Add item to cart using repository
       const addItemInput = {
@@ -158,18 +170,12 @@ export class CartController {
         throw new ApiError("Item not found in cart", 404);
       }
 
-      // Verify product stock
+      // Verify product is still orderable (D-013)
       const product = await this.productRepository.findById(productId!);
       if (!product) {
-        throw new ApiError("Product not found", 404);
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
-
-      if (product.stock < quantity) {
-        throw new ApiError(
-          `Insufficient stock. Available: ${product.stock}`,
-          400
-        );
-      }
+      assertOrderable(product);
 
       // Update item quantity
       const updateInput: UpdateCartItemInput = {

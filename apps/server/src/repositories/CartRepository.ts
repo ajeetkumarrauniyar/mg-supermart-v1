@@ -24,6 +24,7 @@ import {
   CartItemResponse,
 } from "../models/Cart.js";
 import { ProductRepository } from "./ProductRepository.js";
+import { lineBlocker } from "../domain/orderability.js";
 
 /**
  * Repository class for shopping cart operations
@@ -142,8 +143,13 @@ export class CartRepository {
   }
 
   /**
-   * Retrieves the complete cart for a user with product details and totals
-   * Validates product availability and removes out-of-stock items automatically
+   * Retrieves the complete cart for a user with product details and totals.
+   *
+   * D-013: stock is informational in M1 and is NOT consulted. Lines whose
+   * product has become non-orderable are kept and flagged (isOrderable=false,
+   * blocker) so the quote can explain them — never silently removed (EP-4.6).
+   * Only a line whose product document no longer exists at all is dropped,
+   * because it cannot be named or priced.
    *
    * @param userId - ID of the user whose cart to retrieve
    * @returns Promise resolving to complete cart response with items and totals
@@ -175,12 +181,12 @@ export class CartRepository {
     let totalAmount = 0;
     let totalItems = 0;
 
-    // Process each cart item and validate product availability
+    // Process each cart item with server-authoritative product data
     for (const cartItem of cartItems) {
       const product = await this.productRepository.findById(cartItem.productId);
 
-      // Only include items that are still available and in stock
-      if (product && product.stock > 0) {
+      if (product) {
+        const blocker = lineBlocker(product);
         const itemWithProduct: CartItemWithProduct = {
           productId: cartItem.productId,
           name: product.name,
@@ -189,13 +195,16 @@ export class CartRepository {
           unit: product.unit,
           quantity: cartItem.quantity,
           addedAt: cartItem.addedAt,
+          isOrderable: product.isOrderable,
+          minOrderExempt: product.minOrderExempt,
+          ...(blocker !== null && { blocker }),
         };
 
         itemsWithProducts.push(itemWithProduct);
         totalAmount += product.price * cartItem.quantity;
         totalItems += cartItem.quantity;
       } else {
-        // Remove items that are out of stock or no longer exist
+        // The product document is gone entirely; nothing to show or price
         await this.removeItem(userId, cartItem.productId);
       }
     }
@@ -210,6 +219,9 @@ export class CartRepository {
         unit: item.unit,
         quantity: item.quantity,
         addedAt: timestampToString(item.addedAt),
+        isOrderable: item.isOrderable,
+        minOrderExempt: item.minOrderExempt,
+        ...(item.blocker !== undefined && { blocker: item.blocker }),
       })),
       totalItems,
       totalAmount,

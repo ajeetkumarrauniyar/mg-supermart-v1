@@ -178,6 +178,30 @@ export const validateUpdateProduct = (
   if (productData.imageUrl && !isValidUrl(productData.imageUrl)) {
     throw new ValidationError("Valid image URL is required", "imageUrl");
   }
+
+  validateProductFlags(productData);
+};
+
+/**
+ * Validates the admin-owned catalogue flags when present (D-013).
+ * They must be real booleans — "false" strings would otherwise be truthy.
+ * @param data - Object that may carry isActive / isAvailable / minOrderExempt / mrp
+ * @throws ValidationError when a provided flag is not a boolean
+ */
+export const validateProductFlags = (data: {
+  isActive?: unknown;
+  isAvailable?: unknown;
+  minOrderExempt?: unknown;
+  mrp?: unknown;
+}): void => {
+  for (const key of ["isActive", "isAvailable", "minOrderExempt"] as const) {
+    if (data[key] !== undefined && typeof data[key] !== "boolean") {
+      throw new ValidationError(`${key} must be a boolean`, key);
+    }
+  }
+  if (data.mrp !== undefined && (typeof data.mrp !== "number" || data.mrp < 0)) {
+    throw new ValidationError("mrp must be a non-negative number", "mrp");
+  }
 };
 
 /**

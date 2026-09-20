@@ -15,7 +15,8 @@
     "setup-firebase": "tsx --tsconfig tsconfig.json src/setup-firebase.ts",
     "test": "pnpm run test:unit && pnpm run test:int",
     "test:unit": "vitest run --config vitest.config.ts",
-    "test:int": "firebase emulators:exec --only firestore --project demo-mg-mart-test --config ../../firebase.json \"vitest run --config vitest.int.config.ts\""
+    "test:int": "firebase emulators:exec --only firestore --project demo-mg-mart-test --config ../../firebase.json \"vitest run --config vitest.int.config.ts\"",
+    "seed:test": "tsx --tsconfig tsconfig.json src/scripts/seed-test-catalog.ts"
   },
   "keywords": [],
   "author": "",

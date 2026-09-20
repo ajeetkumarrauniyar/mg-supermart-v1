@@ -153,3 +153,29 @@ export const putOrder = async (
       ...fields,
     });
 };
+
+/** Loads the deterministic seed catalog (D-006) into the emulator. */
+export const seedCatalog = async (options: { reset?: boolean } = {}) => {
+  const { getDb } = await import("../services/firebase.js");
+  const { loadSeed, readSeedCatalog } = await import("../seed/loadSeed.js");
+  const catalog = readSeedCatalog();
+  const result = await loadSeed(getDb(), catalog, options);
+  return { catalog, result };
+};
+
+/** Stable hash of all SEED-* product documents (for idempotence checks). */
+export const hashSeedProducts = async (): Promise<string> => {
+  const { createHash } = await import("crypto");
+  const docs = (await listDocs("products"))
+    .filter((d) => String(d.productId).startsWith("SEED-"))
+    .map((d) => {
+      const norm: Record<string, unknown> = {};
+      for (const k of Object.keys(d).sort()) {
+        const v = d[k] as any;
+        norm[k] = v && typeof v.toMillis === "function" ? v.toMillis() : v;
+      }
+      return norm;
+    })
+    .sort((a, b) => String(a.productId).localeCompare(String(b.productId)));
+  return createHash("sha256").update(JSON.stringify(docs)).digest("hex");
+};

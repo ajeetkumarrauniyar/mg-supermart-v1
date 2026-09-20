@@ -9,14 +9,18 @@
 
 import { Router } from "express";
 import { ProductController } from "../controllers/index.js";
-import { authenticateToken, requireAdmin } from "../middleware/auth.js";
+import {
+  authenticateToken,
+  optionalAuth,
+  requireAdmin,
+} from "../middleware/auth.js";
 
 const router: Router = Router();
 const productController = new ProductController();
 
-// Public routes
-router.get("/", productController.getAllProducts);
-router.get("/:productId", productController.getProductById);
+// Public routes (optionalAuth so an admin token can see inactive products — D-013)
+router.get("/", optionalAuth, productController.getAllProducts);
+router.get("/:productId", optionalAuth, productController.getProductById);
 
 // Admin-only routes - require authentication AND admin role
 router.post(
