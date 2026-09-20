@@ -120,7 +120,7 @@ app.get("/test/orders", orderController.getAllOrders);
 app.get(
   "/test/orders/history",
   authenticateToken,
-  orderController.getOrderHistory
+  orderController.listOrders
 );
 app.get("/test/orders/stats", orderController.getOrderStats);
 app.get(
@@ -208,7 +208,7 @@ app.get("/test/validate", (req, res) => {
       loaded: !!orderController,
       methods: [
         "createOrder",
-        "getOrderHistory",
+        "listOrders",
         "getOrderById",
         "cancelOrder",
         "updateOrderStatus",

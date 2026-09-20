@@ -153,9 +153,14 @@ export class OrderController {
   };
 
   /**
-   * Get user's order history with pagination
+   * List orders for the caller (B1 / ISS-001).
+   *
+   * Admin token  → every order, with the existing status/userId filters and
+   *                pagination (delegates to getAllOrders — admin panel contract).
+   * Customer     → only the caller's own orders, scoped server-side by userId.
+   *                A customer-supplied `userId` query param is ignored.
    */
-  getOrderHistory = async (
+  listOrders = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -166,47 +171,41 @@ export class OrderController {
         throw new ApiError("User not authenticated", 401);
       }
 
-      const { limit = "10", offset = "0", status } = req.query;
+      if (req.user?.role === "admin") {
+        await this.getAllOrders(req, res, next);
+        return;
+      }
 
-      // Parse pagination parameters
+      const { limit = "20", offset = "0", status } = req.query;
+
       const limitNum = parseInt(limit as string, 10);
       const offsetNum = parseInt(offset as string, 10);
 
-      if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
-        throw new ApiError("Limit must be between 1 and 50", 400);
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+        throw new ApiError("Limit must be between 1 and 100", 400);
       }
 
       if (isNaN(offsetNum) || offsetNum < 0) {
         throw new ApiError("Offset must be a non-negative number", 400);
       }
 
-      // Get all orders and filter manually to avoid Firestore composite index requirement
-      const allOrders = await this.orderRepository.list({});
-      let orders = allOrders.filter((order) => order.userId === userId);
-
-      // Filter by status if provided
+      let statusFilter: OrderStatus | undefined;
       if (status) {
         const validStatuses: OrderStatus[] = [
           "pending",
           "processing",
           "shipped",
           "delivered",
-          "delivered",
           "cancelled",
         ];
         if (!validStatuses.includes(status as OrderStatus)) {
           throw new ApiError("Invalid order status", 400);
         }
-        orders = orders.filter((order) => order.status === status);
+        statusFilter = status as OrderStatus;
       }
 
-      // Sort by creation date (newest first)
-      orders.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      const orders = await this.orderRepository.listByUser(userId, statusFilter);
 
-      // Apply pagination
       const total = orders.length;
       const paginatedOrders = orders.slice(offsetNum, offsetNum + limitNum);
 
@@ -282,7 +281,7 @@ export class OrderController {
       }
 
       const { orderId } = req.params as Record<string, string>;
-      const { reason } = req.body;
+      const { reason } = req.body ?? {};
 
       if (!orderId) {
         throw new ApiError("Order ID is required", 400);

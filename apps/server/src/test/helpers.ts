@@ -128,3 +128,28 @@ export const listDocs = async (path: string): Promise<Record<string, unknown>[]>
   const snap = await getDb().collection(path).get();
   return snap.docs.map((d) => d.data() as Record<string, unknown>);
 };
+
+/** Writes an order document directly (legacy shape) for authorisation tests. */
+export const putOrder = async (
+  orderId: string,
+  userId: string,
+  fields: Record<string, unknown> = {}
+): Promise<void> => {
+  const { getDb, COLLECTIONS, createTimestamp } = await import("../services/firebase.js");
+  const now = createTimestamp();
+  await getDb()
+    .collection(COLLECTIONS.ORDERS)
+    .doc(orderId)
+    .set({
+      orderId,
+      userId,
+      items: [{ productId: "P1", name: "Product P1", price: 100, quantity: 1 }],
+      totalAmount: 100,
+      status: "pending",
+      shippingAddress: { street: "s", city: "c", state: "st", zipCode: "z" },
+      paymentDetails: { paymentMethod: "COD" },
+      createdAt: now,
+      updatedAt: now,
+      ...fields,
+    });
+};

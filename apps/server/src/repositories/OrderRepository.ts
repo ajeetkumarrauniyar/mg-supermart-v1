@@ -158,6 +158,28 @@ export class OrderRepository {
   }
 
   /**
+   * Retrieves every order that belongs to one user, newest first.
+   *
+   * Scoped server-side by a single-field equality query, which needs no
+   * composite index (unlike userId + orderBy createdAt). A customer's own
+   * order set is small, so sorting/status filtering happens in memory.
+   *
+   * @param userId - Owner whose orders to return
+   * @param status - Optional status filter
+   */
+  async listByUser(userId: string, status?: OrderStatus): Promise<OrderResponse[]> {
+    const snapshot = await this.collection.where("userId", "==", userId).get();
+    let orders = snapshot.docs.map((doc) => this.toResponse(doc.data() as Order));
+    if (status) {
+      orders = orders.filter((order) => order.status === status);
+    }
+    orders.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return orders;
+  }
+
+  /**
    * Retrieves a filtered and paginated list of orders
    * Supports filtering by status and user ID
    *

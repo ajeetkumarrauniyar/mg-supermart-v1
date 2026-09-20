@@ -7,8 +7,20 @@
     "sourceMap": true,
     "moduleResolution": "bundler"
   },
-  "include": ["src/**/*", "types/**/*", "types/**/*.d.ts", "@types/**/*"],
-  "exclude": ["node_modules", "dist", "src/test-real-config.ts", "src/setup-firebase.ts"],
+  "include": [
+    "src/**/*",
+    "types/**/*",
+    "types/**/*.d.ts",
+    "@types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/test-real-config.ts",
+    "src/setup-firebase.ts",
+    "src/**/*.test.ts",
+    "src/test/**"
+  ],
   "ts-node": {
     "esm": true,
     "transpileOnly": true
