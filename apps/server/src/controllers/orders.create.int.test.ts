@@ -255,6 +255,35 @@ describe("POST /api/v1/orders", () => {
     expect(notOwned.body.code).toBe("ADDRESS_NOT_OWNED");
   });
 
+  it("malformed ids never reach Firestore: 400 VALIDATION_ERROR, no stray documents", async () => {
+    const app = await getApp();
+    const u = await registerUser();
+    const addressId = await saveAddress(u.token, near);
+    await fillCart(u.token, [["SEED-RICE-5KG", 2]]);
+    for (const idempotencyKey of ["..", "a/b/c", "__x__", "a/b"]) {
+      const r = await place(u.token, { addressId, paymentMethod: "COD", idempotencyKey });
+      expect(r.status).toBe(400);
+      expect(r.body.code).toBe("VALIDATION_ERROR");
+      expect(r.body.field).toBe("idempotencyKey");
+    }
+    for (const bad of ["..", "a/b", "__x__"]) {
+      const q = await request(app).post("/api/v1/cart/quote").set(auth(u.token)).send({ addressId: bad });
+      expect(q.status).toBe(400);
+      expect(q.body.field).toBe("addressId");
+      const o = await place(u.token, { addressId: bad, paymentMethod: "COD", idempotencyKey: key() });
+      expect(o.status).toBe(400);
+    }
+    // path params ("/addresses/.." is normalised away by Express before routing, so probe the others)
+    for (const bad of ["a%2Fb", "__x__"]) {
+      const d = await request(app).delete(`/api/v1/addresses/${bad}`).set(auth(u.token));
+      expect(d.status).toBe(400);
+      expect(d.body.field).toBe("addressId");
+    }
+    expect(await listDocs(`users/${u.userId}/orderIdempotency/a/b`)).toEqual([]);
+    const cart = await request(app).get("/api/v1/cart").set(auth(u.token));
+    expect(cart.body.data.items).toHaveLength(1);
+  });
+
   it("cancel keeps ownership rules and does not touch stock", async () => {
     const app = await getApp();
     const u = await registerUser();

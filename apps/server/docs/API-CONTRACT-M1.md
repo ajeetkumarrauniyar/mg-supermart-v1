@@ -151,7 +151,8 @@ Below-minimum and unserviceable examples: see `api-contract-m1.examples.json`
   writes the order, the idempotency record and deletes the cart lines. No stock is read for orderability or written.
 - `201` with the order. **Replay** with the same `idempotencyKey` ⇒ `200 { replayed: true, data: <original order> }`.
 - Any blocker ⇒ `422 { code: <first blocker>, blockers: [...], serviceability }`, nothing written, cart intact.
-- `paymentMethod` must be `"COD"` (`"Online"` ⇒ 400 in M1). `idempotencyKey` is client-generated (UUID), ≤ 128 chars.
+- `paymentMethod` must be `"COD"` (`"Online"` ⇒ 400 in M1). `idempotencyKey` is client-generated (UUID).
+- **Id format:** `addressId` and `idempotencyKey` must match `^[A-Za-z0-9_-]{1,128}$` (Firestore auto-ids and UUIDs do); anything else ⇒ `400 VALIDATION_ERROR` naming the field. The same rule applies to `:addressId` path params and `quote.addressId`.
 
 Order shape (additive over the legacy shape the admin panel reads — `items[].price`, `totalAmount`, `shippingAddress`):
 

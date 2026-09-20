@@ -7,7 +7,7 @@
  */
 import { Request, Response, NextFunction } from "express";
 import { AddressRepository, type StoredAddress } from "../repositories/AddressRepository.js";
-import { validateAddressInput } from "../utils/validation.js";
+import { validateAddressInput, validateId } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import { computeServiceability } from "../domain/serviceability.js";
 import { getStoreConfig, ConfigError } from "../config/storeConfig.js";
@@ -59,10 +59,7 @@ export class AddressController {
 
   private addressId(req: Request): string {
     const { addressId } = req.params as Record<string, string>;
-    if (!addressId) {
-      throw new ApiError("Address ID is required", 400);
-    }
-    return addressId;
+    return validateId(addressId, "addressId");
   }
 
   /** Cross-user ids resolve to "not found" on the caller's path ⇒ 403 ADDRESS_NOT_OWNED. */

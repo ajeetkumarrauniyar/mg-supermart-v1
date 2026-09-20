@@ -14,6 +14,7 @@ import { ProductRepository } from "../repositories/ProductRepository.js";
 import {
   validateRequired,
   validatePositiveNumber,
+  validateId,
 } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
@@ -74,7 +75,7 @@ export class CartController {
       const body = (req.body ?? {}) as { addressId?: unknown };
       const addressId =
         typeof body.addressId === "string" && body.addressId.trim() !== ""
-          ? body.addressId.trim()
+          ? validateId(body.addressId, "addressId")
           : undefined;
 
       const config = requireStoreConfig();

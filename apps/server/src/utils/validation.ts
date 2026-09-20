@@ -206,6 +206,28 @@ export const validateProductFlags = (data: {
 };
 
 /**
+ * Validates a client-supplied identifier that becomes a Firestore document id
+ * (addressId, idempotencyKey). Anything else — "..", "a/b", "__x__" — would
+ * reach the SDK as a raw path segment and surface as a 500 or a stray nested
+ * document. Firestore auto-ids and UUIDs always match.
+ * @param value - Raw value
+ * @param fieldName - Field name for the error
+ * @returns The trimmed id
+ * @throws ValidationError when missing or malformed
+ */
+export const validateId = (value: unknown, fieldName: string): string => {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new ValidationError(`${fieldName} is required`, fieldName);
+  }
+  const id = value.trim();
+  // charset + length, and Firestore's reserved __name__ pattern
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id) || /^__.*__$/.test(id)) {
+    throw new ValidationError(`${fieldName} is not a valid id`, fieldName);
+  }
+  return id;
+};
+
+/**
  * Validates the POST /orders body (D-004, D-005, D-012 §7).
  * Shape: { addressId, paymentMethod: "COD", idempotencyKey }. The cart, prices,
  * rules and serviceability are read server-side inside the transaction — the
@@ -216,10 +238,7 @@ export const validateProductFlags = (data: {
  * @throws ValidationError when a field is missing or unsupported
  */
 export const validateCreateOrder = (body: Record<string, unknown>): CreateOrderRequest => {
-  const addressId = body.addressId;
-  if (typeof addressId !== "string" || addressId.trim() === "") {
-    throw new ValidationError("addressId is required", "addressId");
-  }
+  const addressId = validateId(body.addressId, "addressId");
 
   const paymentMethod = body.paymentMethod;
   if (paymentMethod === undefined || paymentMethod === null || paymentMethod === "") {
@@ -230,12 +249,12 @@ export const validateCreateOrder = (body: Record<string, unknown>): CreateOrderR
     throw new ValidationError("Only COD is supported at the moment", "paymentMethod");
   }
 
-  const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
-  if (idempotencyKey.length > 128) {
-    throw new ValidationError("idempotencyKey is too long", "idempotencyKey");
-  }
+  // Absence is reported by the controller as IDEMPOTENCY_KEY_REQUIRED; a present
+  // key must be a safe document id.
+  const rawKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+  const idempotencyKey = rawKey === "" ? "" : validateId(rawKey, "idempotencyKey");
 
-  return { addressId: addressId.trim(), paymentMethod: "COD", idempotencyKey };
+  return { addressId, paymentMethod: "COD", idempotencyKey };
 };
 
 /**
