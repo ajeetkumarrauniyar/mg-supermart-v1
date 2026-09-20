@@ -219,3 +219,7 @@ pnpm --filter @mg-mart/server test:unit    # pure domain/config tests
 pnpm --filter @mg-mart/server test:int     # Firestore emulator (needs JDK ≥ 21 on PATH)
 pnpm --filter @mg-mart/server seed:test    # load seed/catalog.v1.json into the emulator (or staging with --allow-project)
 ```
+
+`seed:test` needs `FIRESTORE_EMULATOR_HOST` (set automatically under `firebase emulators:exec`) **and**
+`FIREBASE_PROJECT_ID` (any value with the emulator, e.g. `demo-mg-mart-test`; `services/firebase.ts` requires it).
+The emulator needs a JDK ≥ 21 on `PATH`.
