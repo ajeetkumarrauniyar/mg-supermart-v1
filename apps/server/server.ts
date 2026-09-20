@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import app from "./src/app.js";
+import { getStoreConfig } from "./src/config/storeConfig.js";
 
 const start = (): void => {
   try {
@@ -11,7 +12,10 @@ const start = (): void => {
     const host: string = process.env.HOST || "0.0.0.0";
     const env = process.env.NODE_ENV || "development";
 
-    app.listen(port, host, () => {
+    // D-014: validated business configuration, no code defaults — refuse to start without it.
+  getStoreConfig();
+
+  app.listen(port, host, () => {
       // eslint-disable-next-line no-console
       console.log(
         `🚀 Server listening on ${host}:${port} in 📍${env.toUpperCase()} mode at ⏰ ${new Date().toLocaleTimeString()}`
