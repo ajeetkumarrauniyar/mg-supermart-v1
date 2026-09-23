@@ -14,6 +14,7 @@ import {
   validateRequired,
   validatePositiveNumber,
   validateUpdateProduct,
+  validateId,
 } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import {
@@ -155,11 +156,12 @@ export class ProductController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { productId } = req.params as Record<string, string>;
-
-      if (!productId) {
-        throw new ApiError("Product ID is required", 400);
-      }
+      // Validated before the lookup: an id such as "__x__" or "a/b" is not a
+      // legal Firestore document id and would otherwise surface as a 500.
+      const productId = validateId(
+        (req.params as Record<string, string>).productId,
+        "productId"
+      );
 
       const product = await this.productRepository.findById(productId);
       if (!product) {
