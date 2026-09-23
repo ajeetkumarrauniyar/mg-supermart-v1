@@ -8,19 +8,19 @@ export interface LegacyShippingAddress {
   zipCode: string;
 }
 
-/** The structured-address fields the mapper needs (subset of the D-012 model). */
+/** The structured-address fields the mapper needs. */
 export interface StructuredAddressLike {
   line1: string;
   landmark?: string | undefined;
   area: string;
   pincode?: string | undefined;
-  /** Not collected in M1; honoured if the model is ever extended. */
+  /** Not collected today; honoured if the address model is ever extended. */
   state?: string | undefined;
 }
 
 /**
- * Pure mapper from the structured M1 address to the legacy shippingAddress
- * (Phase 1 T5.2). Documented mapping:
+ * Pure mapper from the structured address to the legacy shippingAddress shape
+ * the admin panel renders. Mapping:
  *
  *   street  ← [line1, landmark].filter(Boolean).join(", ")
  *   city    ← area

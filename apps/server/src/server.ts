@@ -7,7 +7,7 @@ const start = (): void => {
         const host: string = process.env.HOST || "0.0.0.0";
         const env = process.env.NODE_ENV || "development";
 
-        // D-014: validated business configuration, no code defaults — refuse to start without it.
+        // Validated business configuration; no code defaults.
     getStoreConfig();
 
     app.listen(port, host, () => {

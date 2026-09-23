@@ -1,7 +1,7 @@
 import type { LineBlockerReason, ProductFlags } from "./types.js";
 
 /**
- * Normalises the admin-owned flags on a product document (D-013).
+ * Normalises the admin-owned availability flags on a product document.
  * Missing fields on existing documents are backward compatible:
  * isActive → true, isAvailable → true, minOrderExempt → false.
  * Only an explicit `false` hides or disables a product.
@@ -15,8 +15,9 @@ export const normalizeProductFlags = (
 });
 
 /**
- * Derived verdict — returned in every response, NEVER persisted (D-013).
- * M1: isActive && isAvailable. Stock is not consulted until Phase 6.
+ * Derived verdict — returned in every response, never persisted.
+ * Stock is deliberately not consulted: the catalogue's stock figures are not
+ * yet trustworthy, so availability is an explicit admin-owned flag.
  */
 export const deriveOrderable = (flags: ProductFlags): boolean =>
   flags.isActive && flags.isAvailable;

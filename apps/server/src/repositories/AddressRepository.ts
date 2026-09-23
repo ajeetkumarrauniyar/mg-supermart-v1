@@ -1,5 +1,5 @@
 /**
- * Address Repository (D-003, D-012, PD-3).
+ * Address Repository.
  *
  * Addresses live in the subcollection users/{uid}/addresses so every read and
  * write is scoped to the owner by path. The repository stores facts only; the
@@ -13,7 +13,7 @@ import {
 } from "../services/firebase.js";
 import type { AddressInput, CustomerAddress } from "../models/Address.js";
 
-/** Subcollection name under users/{uid}. Kept here so services/firebase.ts stays untouched in Phase 1. */
+/** Subcollection name under users/{uid}. */
 export const ADDRESSES_SUBCOLLECTION = "addresses";
 
 /** Stored address with string timestamps; serviceability is added by the caller. */

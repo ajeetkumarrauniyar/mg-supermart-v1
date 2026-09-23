@@ -15,7 +15,7 @@ export interface CartItemWithProduct {
   unit: string;
   quantity: number;
   addedAt: Timestamp;
-  /** Derived per D-013; lines are kept and flagged, never silently removed. */
+  /** Derived; lines are kept and flagged, never silently removed. */
   isOrderable: boolean;
   minOrderExempt: boolean;
   blocker?: LineBlockerReason;

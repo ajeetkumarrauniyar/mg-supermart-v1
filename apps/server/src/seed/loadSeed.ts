@@ -1,5 +1,5 @@
 /**
- * Seed catalog loader (D-006, T3.3).
+ * Seed catalog loader.
  *
  * - Reads seed/catalog.v1.json (versioned in the repo).
  * - Writes each product with `set` (no merge) so a re-run yields the exact

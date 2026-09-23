@@ -11,12 +11,12 @@ export type OrderStatus =
 
 export type PaymentMethod = "COD" | "Online";
 
-/** Stored from day one so online payment can be added without reshaping orders (D-005). */
+/** Stored from the start so online payment can be added without reshaping orders. */
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 /**
  * One order line. `price`/`name` are the legacy fields the admin panel reads;
- * `unitPrice`, `lineTotal` and `minOrderExempt` are the D-014 §5 snapshots.
+ * `unitPrice`, `lineTotal` and `minOrderExempt` snapshot the pricing at order time.
  */
 export interface OrderItem {
   productId: string;
@@ -33,7 +33,7 @@ export interface PaymentDetails {
   transactionId?: string;
 }
 
-/** Copy of the address as it was at order time, plus the serviceability facts (D-003, D-012 §8). */
+/** Copy of the address as it was at order time, plus the serviceability facts. */
 export interface AddressSnapshot {
   addressId: string;
   label: string;
@@ -51,7 +51,7 @@ export interface AddressSnapshot {
 }
 
 /**
- * Order document. Additive on top of the legacy shape (D-005): `items`,
+ * Order document. Additive on top of the legacy shape: `items`,
  * `totalAmount` (= bill.total) and `shippingAddress` keep the admin panel
  * working; the new fields make the order self-contained and explainable.
  */
@@ -72,7 +72,7 @@ export interface Order {
   updatedAt: Timestamp;
 }
 
-/** Request body for POST /orders (D-004, D-012 §7, D-014 §5). */
+/** Request body for POST /orders. */
 export interface CreateOrderRequest {
   addressId: string;
   paymentMethod: "COD";

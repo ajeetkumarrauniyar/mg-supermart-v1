@@ -1,4 +1,4 @@
-/** T5.2 — transactional, idempotent order creation (D-004, D-012 §7–8, D-014 §5). */
+/** Transactional, idempotent order creation. */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { execSync } from "child_process";
@@ -77,7 +77,7 @@ describe("POST /api/v1/orders", () => {
     const cart = await request(app).get("/api/v1/cart").set(auth(u.token));
     expect(cart.body.data.items).toEqual([]);
 
-    // stock untouched (D-006/D-013)
+    // stock untouched
     expect((await readDoc("products/SEED-RICE-5KG"))?.stock).toBe(40);
 
     // idempotency record written in the same transaction

@@ -1,5 +1,5 @@
 /**
- * Machine-readable API error codes (D-012 §9).
+ * Machine-readable API error codes.
  *
  * Additive: `ApiError.code` is optional, and responses without a code are
  * unchanged. Clients use these to distinguish e.g. "not serviceable" from

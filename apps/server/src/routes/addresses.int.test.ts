@@ -1,4 +1,4 @@
-/** T4.1 / T4.2 — address entity, ownership, computed serviceability, mounting. */
+/** Address entity, ownership, computed serviceability and route mounting. */
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import request from "supertest";
 import {
@@ -44,7 +44,7 @@ afterEach(() => {
   resetStoreConfigCache();
 });
 
-describe("mounting (verified: /api → /v1/<name> in routes/index.ts)", () => {
+describe("mounting (/api → /v1/<name> in routes/index.ts)", () => {
   it("GET /api/v1/addresses → 200 for an authenticated user", async () => {
     const app = await getApp();
     const res = await request(app).get("/api/v1/addresses").set(auth(a.token));
@@ -195,7 +195,7 @@ describe("list / ownership / default / update / delete", () => {
   });
 });
 
-describe("T4.2 legacy user.address is left intact", () => {
+describe("legacy user.address is left intact", () => {
   it("PUT /users/profile still accepts the embedded address", async () => {
     const app = await getApp();
     const res = await request(app)

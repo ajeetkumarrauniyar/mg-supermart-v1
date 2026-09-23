@@ -1,4 +1,4 @@
-/** T3.1 — product flags, derived isOrderable, customer/admin visibility (D-013). */
+/** Product flags, derived isOrderable, and customer/admin visibility. */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import {

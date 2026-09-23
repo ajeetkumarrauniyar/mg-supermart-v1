@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parseStoreConfig, ConfigError } from "./storeConfig.js";
 import { validEnv } from "../test/fixtures.js";
 
-describe("parseStoreConfig (D-014 §3)", () => {
+describe("parseStoreConfig", () => {
   it("parses a complete env into a typed StoreConfig", () => {
     const cfg = parseStoreConfig(validEnv(), () => new Date("2026-09-20T00:00:00Z"));
     expect(cfg).toEqual({

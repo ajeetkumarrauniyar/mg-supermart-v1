@@ -1,7 +1,6 @@
 /**
- * T6.1 — produces the request/response examples embedded in
- * docs/API-CONTRACT-M1.md from real emulator runs, and asserts the
- * examples in the doc match the current output (snapshot).
+ * Produces the request/response examples embedded in docs/API-CONTRACT-M1.md
+ * from real emulator runs, so the documentation cannot drift from the API.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";

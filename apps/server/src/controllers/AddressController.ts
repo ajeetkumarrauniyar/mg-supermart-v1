@@ -1,5 +1,5 @@
 /**
- * Address Controller (D-003, D-012).
+ * Address Controller.
  *
  * Every response carries a freshly computed `serviceability`; nothing about
  * serviceability is ever stored. A well-formed address is always accepted —
@@ -14,7 +14,7 @@ import { getStoreConfig, ConfigError } from "../config/storeConfig.js";
 import type { AddressResponse } from "../models/Address.js";
 import type { StoreConfig } from "../domain/types.js";
 
-/** Translate a missing/invalid StoreConfig into 503 CONFIG_UNAVAILABLE (D-014). */
+/** Translate a missing/invalid StoreConfig into 503 CONFIG_UNAVAILABLE. */
 export const requireStoreConfig = (): StoreConfig => {
   try {
     return getStoreConfig();

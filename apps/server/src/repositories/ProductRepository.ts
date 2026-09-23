@@ -152,7 +152,7 @@ export class ProductRepository {
       offset?: number;
       category?: ProductCategory;
       isFeatured?: boolean;
-      /** Re-mapped to the derived isOrderable (D-013); stock is not consulted. */
+      /** Re-mapped to the derived isOrderable; stock is not consulted. */
       inStock?: boolean;
       /** Admin only: include products with isActive=false. */
       includeInactive?: boolean;
@@ -182,13 +182,13 @@ export class ProductRepository {
     const snapshot = await query.get();
     let products = snapshot.docs.map((doc) => this.toResponse(doc.data() as Product));
 
-    // PD-4 (explicitly temporary, M1): customer listings exclude isActive=false
-    // IN MEMORY, after the Firestore query, so documents that predate the flag
-    // (field missing) stay visible. Known limitation: because this runs after
-    // Firestore applied limit/offset, a requested page may contain fewer than
-    // `limit` visible products when inactive documents fall inside it. The
-    // query-level where("isActive","==",true), the backfill of missing flags
-    // and the composite indexes are deferred to Phase 6.
+    // Customer listings exclude isActive=false IN MEMORY, after the Firestore
+    // query, so documents that predate the flag (field missing) stay visible.
+    // Known limitation: because this runs after Firestore applied limit/offset,
+    // a requested page may contain fewer than `limit` visible products when
+    // inactive documents fall inside it. Moving the filter into the query needs
+    // where("isActive","==",true), a backfill of the missing flags and matching
+    // composite indexes; until then, treat page sizes as approximate.
     if (!options.includeInactive) {
       products = products.filter((product) => product.isActive !== false);
     }
@@ -275,7 +275,7 @@ export class ProductRepository {
    * @returns Product response object safe for API responses
    */
   private toResponse(product: Product): ProductResponse {
-    // D-013: persist the facts, derive the verdict. isOrderable is never stored.
+    // Persist the underlying facts and derive isOrderable; never store the verdict.
     const flags = normalizeProductFlags(product);
     return {
       productId: product.productId,

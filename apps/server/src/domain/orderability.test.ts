@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { normalizeProductFlags, deriveOrderable, lineBlocker } from "./orderability.js";
 
-describe("orderability (D-013)", () => {
+describe("orderability", () => {
   it.each([
     // doc fields                                   flags                       orderable  blocker
     [{}, { isActive: true, isAvailable: true, minOrderExempt: false }, true, null],

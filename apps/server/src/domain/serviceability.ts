@@ -4,7 +4,7 @@ import type { GeoPoint, Serviceability, StoreConfig } from "./types.js";
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
- * Serviceability of a point against the current store configuration (D-012).
+ * Serviceability of a point against the current store configuration.
  *
  * - Hard rule: distanceKm <= deliveryRadiusKm. No warning band.
  * - Missing coordinates ⇒ `unknown` / NO_COORDINATES (cannot be ordered to).

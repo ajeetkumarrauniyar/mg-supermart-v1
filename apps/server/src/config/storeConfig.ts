@@ -1,5 +1,5 @@
 /**
- * StoreConfig loaded from validated environment variables (D-014 §3).
+ * StoreConfig loaded from validated environment variables.
  *
  * No code defaults for business values: a missing or invalid variable makes
  * `parseStoreConfig` throw a ConfigError naming every problem, the server

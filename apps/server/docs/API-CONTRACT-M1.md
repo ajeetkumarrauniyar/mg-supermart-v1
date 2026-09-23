@@ -1,21 +1,23 @@
-# MG Supermart API contract — M1 (Phase 1 output)
+# MG Supermart API — cart, checkout and catalogue
+
+Reference for the customer-facing ordering API: products, cart, addresses, the
+quote that prices a cart, and order creation.
 
 **Base URL:** `/api/v1` (Express `app.use("/api", …)` + `routes/index.ts` `router.use("/v1/<feature>", …)`).
-**Auth:** `Authorization: Bearer <JWT>` from `POST /auth/register` / `POST /auth/login` (unchanged, D-009).
-**Source of truth:** every rule (₹500 minimum, exemptions, fees, serviceability, totals) is computed
-server-side and returned as a *quote*; the client renders it and never re-derives a rule (D-001).
-**Examples:** every example below was produced by `src/test/contract-examples.int.test.ts` against
+**Auth:** `Authorization: Bearer <JWT>` from `POST /auth/register` / `POST /auth/login`.
+**Source of truth:** every rule — the ₹500 minimum, its exemptions, fees, serviceability and totals — is
+computed server-side and returned as a *quote*. Clients render that result and never re-derive a rule,
+so the cart, the checkout screen and the stored order can never disagree.
+**Examples:** every example below was produced by `src/test/contract-examples.int.test.ts` running against
 the Firestore emulator and the seed catalog; the full set is in `api-contract-m1.examples.json`.
 Volatile values (ids, timestamps) are replaced with placeholders.
-
-This document is the input to Phase 2 (E2E script) and Phase 3/4 (mobile cart & checkout).
 
 ---
 
 ## 1. Error envelope
 
 Every error is `{ success: false, error: string, field?: string, code?: string, …details }`.
-`code` is additive (D-012 §9); legacy errors without a code are unchanged.
+`code` is optional; older errors that predate it are unchanged.
 
 | code | HTTP | Where |
 |---|---|---|
@@ -33,7 +35,7 @@ Every error is `{ success: false, error: string, field?: string, code?: string, 
 
 A `422` from `POST /orders` carries `code` = the first blocker and the full `blockers[]` (plus `serviceability`).
 
-## 2. Products (D-013)
+## 2. Products
 
 Every product response carries the persisted flags and the derived verdict:
 
@@ -41,9 +43,9 @@ Every product response carries the persisted flags and the derived verdict:
 { "isActive": true, "isAvailable": true, "minOrderExempt": true, "isOrderable": true, "mrp": 45, "stock": 50 }
 ```
 
-- `isOrderable = isActive && isAvailable` — derived on every read, **never stored**. `stock` is informational in M1 (not consulted; Phase 6 decides).
+- `isOrderable = isActive && isAvailable` — derived on every read, **never stored**. `stock` is informational: the catalogue's stock figures come from the ERP sync and are not yet trustworthy, so they do not gate ordering.
 - Missing flags on old documents read as `true / true / false`.
-- `GET /products` (customer / anonymous): excludes `isActive=false` (filtered in memory after the query — PD-4, temporary; a page may be shorter than `limit`). `?inStock=true` now means `isOrderable`.
+- `GET /products` (customer / anonymous): excludes `isActive=false`. The filter runs in memory after the Firestore query, so a page may contain fewer than `limit` products when inactive documents fall inside it — treat page sizes as approximate. `?inStock=true` means `isOrderable`.
 - `GET /products?includeInactive=1` — admin token only (403 `FORBIDDEN` otherwise).
 - `GET /products/:id` — `404 NOT_FOUND` for customers when `isActive=false`; admins see it.
 - `PUT /products/:id` (admin) accepts `isActive`, `isAvailable`, `minOrderExempt` (booleans) and `mrp`.
@@ -62,7 +64,7 @@ Every product response carries the persisted flags and the derived verdict:
 | `POST /cart/add { productId, quantity }` | `422 LINE_NOT_ORDERABLE { reason }` for non-orderable products; stock is not checked |
 | `PUT /cart/items/:productId { quantity }` | **canonical** (what the mobile app calls) |
 | `DELETE /cart/items/:productId` | **canonical** |
-| `PUT /cart/update/:productId`, `DELETE /cart/remove/:productId` | deprecated aliases, kept through M1 |
+| `PUT /cart/update/:productId`, `DELETE /cart/remove/:productId` | deprecated aliases, kept for existing clients |
 | `DELETE /cart/clear` | unchanged |
 | `POST /cart/quote { addressId? }` | see §5 |
 
@@ -73,7 +75,7 @@ Prices are server-authoritative: any client-supplied `price` is ignored.
 { "success": false, "error": "Paneer 200 g (not available) is not available right now", "field": "productId", "code": "LINE_NOT_ORDERABLE", "reason": "UNAVAILABLE", "productId": "SEED-UNAVAIL-PANEER" }
 ```
 
-## 4. Addresses (D-003, D-012)
+## 4. Addresses
 
 Stored at `users/{uid}/addresses/{addressId}`; ownership is the path. All routes require a token.
 
@@ -107,7 +109,7 @@ Serviceability = { status: "serviceable" | "not_serviceable" | "unknown"; distan
 { "success": false, "error": "phone is required", "field": "phone", "code": "VALIDATION_ERROR" }
 ```
 
-## 5. Quote — `POST /cart/quote { addressId? }` (D-012 §6, D-014 §4)
+## 5. Quote — `POST /cart/quote { addressId? }`
 
 Always `200` (a quote is a report, never an error) except `503 CONFIG_UNAVAILABLE` and `403 ADDRESS_NOT_OWNED`.
 `addressId` defaults to the caller's default address; with none: `serviceability.status = "unknown"` and blocker `ADDRESS_REQUIRED`.
@@ -144,14 +146,14 @@ Below-minimum and unserviceable examples: see `api-contract-m1.examples.json`
 
 ## 6. Orders
 
-### `POST /orders { addressId, paymentMethod: "COD", idempotencyKey }` (D-004, D-005, D-012 §7–8, D-014 §5)
+### `POST /orders { addressId, paymentMethod: "COD", idempotencyKey }`
 
 - Runs in **one Firestore transaction**: reads the idempotency record, cart, products and the *stored* address;
   recomputes serviceability from stored coordinates and the bill with the same `computeBill` the quote used;
   writes the order, the idempotency record and deletes the cart lines. No stock is read for orderability or written.
 - `201` with the order. **Replay** with the same `idempotencyKey` ⇒ `200 { replayed: true, data: <original order> }`.
 - Any blocker ⇒ `422 { code: <first blocker>, blockers: [...], serviceability }`, nothing written, cart intact.
-- `paymentMethod` must be `"COD"` (`"Online"` ⇒ 400 in M1). `idempotencyKey` is client-generated (UUID).
+- `paymentMethod` must be `"COD"`; `"Online"` is reserved for a later payment integration and is rejected with 400. `idempotencyKey` is client-generated (UUID).
 - **Id format:** `addressId` and `idempotencyKey` must match `^[A-Za-z0-9_-]{1,128}$` (Firestore auto-ids and UUIDs do); anything else ⇒ `400 VALIDATION_ERROR` naming the field. The same rule applies to `:addressId` path params and `quote.addressId`.
 
 Order shape (additive over the legacy shape the admin panel reads — `items[].price`, `totalAmount`, `shippingAddress`):
@@ -197,11 +199,11 @@ Order = {
 | `PUT /orders/:id/cancel` | own only, `pending`/`processing` | any |
 | `PUT /orders/:id/status { status }` | **403** | transition table enforced |
 
-## 7. Environment variables (D-014)
+## 7. Environment variables
 
 | Var | Required | Meaning |
 |---|---|---|
-| `STORE_LAT`, `STORE_LNG` | yes | store coordinates (D-011) |
+| `STORE_LAT`, `STORE_LNG` | yes | store coordinates |
 | `DELIVERY_RADIUS_KM` | yes | hard straight-line radius (5) |
 | `MIN_ORDER_VALUE` | yes | ₹500 |
 | `DELIVERY_FEE_AMOUNT`, `DELIVERY_FEE_WAIVED_AT` | yes / may be empty | `FeeRule`; empty waiver = always applies |
@@ -210,7 +212,7 @@ Order = {
 | `JWT_SECRET`, `FIREBASE_PROJECT_ID` | yes | unchanged |
 
 The server **refuses to start** if a required var is missing or invalid; quote/order return `503 CONFIG_UNAVAILABLE`.
-₹40 / ₹5 in `.env.example` are **placeholders**, not business rules (`STATE.md` Q-2).
+The ₹40 / ₹5 values in `.env.example` are **placeholders**: the real fees have not been decided and must be set explicitly per environment.
 
 ## 8. Running the backend tests
 

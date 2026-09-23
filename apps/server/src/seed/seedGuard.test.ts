@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveSeedTarget, SeedTargetError } from "./seedGuard.js";
 
-describe("seed target guard (D-006)", () => {
+describe("seed target guard", () => {
   it("allows the emulator with any project id", () => {
     expect(
       resolveSeedTarget({ FIRESTORE_EMULATOR_HOST: "localhost:8080", FIREBASE_PROJECT_ID: "demo-x" })

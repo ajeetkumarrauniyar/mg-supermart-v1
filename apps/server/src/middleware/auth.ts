@@ -117,7 +117,7 @@ export const optionalAuth = async (
     const decoded = jwt.verify(token, secret) as JWTPayload;
 
     // Load the role so public routes can offer admin-only views (e.g. inactive
-    // products, D-013). Only costs a read when a token is actually present.
+    // products). Only costs a read when a token is actually present.
     const { UserRepository } = await import(
       "../repositories/UserRepository.js"
     );

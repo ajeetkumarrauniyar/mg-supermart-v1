@@ -35,7 +35,7 @@ export class OrderController {
   }
 
   /**
-   * Create a COD order from the user's cart (D-004, D-012 §7–8, D-014 §5).
+   * Create a cash-on-delivery order from the user's cart.
    *
    * One Firestore transaction — reads first, then writes:
    *   reads : idempotency record (replay ⇒ return the original order),
@@ -43,7 +43,7 @@ export class OrderController {
    *   compute: serviceability from STORED coordinates + computeBill (the same
    *           function the quote used); any blocker aborts with 422
    *   writes: order doc, idempotency record, delete cart lines
-   * No stock is read for orderability and no stock is written (D-006/D-013).
+   * No stock is read for orderability and no stock is written.
    */
   createOrder = async (
     req: Request,
@@ -122,7 +122,7 @@ export class OrderController {
             orderId: this.orderRepository.newOrderId(),
             userId,
             items,
-            totalAmount: quote.bill.total, // mirror of bill.total (D-005)
+            totalAmount: quote.bill.total, // legacy mirror of bill.total
             status: "pending",
             shippingAddress: toLegacyShippingAddress(address, compat),
             paymentDetails: { paymentMethod },
@@ -170,7 +170,7 @@ export class OrderController {
   };
 
   /**
-   * List orders for the caller (B1 / ISS-001).
+   * List orders for the caller.
    *
    * Admin token  → every order, with the existing status/userId filters and
    *                pagination (delegates to getAllOrders — admin panel contract).
@@ -321,8 +321,8 @@ export class OrderController {
       }
 
       // Update order status to cancelled.
-      // No stock is restored: order creation never decrements stock in M1
-      // (D-006/D-013), so restoring here would inflate the BUSY-owned figure.
+      // No stock is restored: order creation never decrements stock, so
+      // restoring here would inflate the figure owned by the ERP sync.
       const updatedOrder = await this.orderRepository.updateStatus(
         orderId,
         "cancelled"

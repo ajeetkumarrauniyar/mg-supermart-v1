@@ -27,7 +27,7 @@ import {
 } from "../services/QuoteService.js";
 import { requireStoreConfig } from "./AddressController.js";
 
-/** D-013: only the derived verdict gates carting; stock is informational in M1. */
+/** Only the derived orderability verdict gates carting; stock is informational. */
 const assertOrderable = (product: ProductResponse): void => {
   const reason = lineBlocker(product);
   if (reason !== null) {
@@ -56,7 +56,7 @@ export class CartController {
 
   /**
    * POST /cart/quote { addressId? } — the authoritative bill for this cart
-   * and address (D-012 §6, D-014 §4). Always 200 with serviceability, bill,
+   * and address. Always 200 with serviceability, bill,
    * orderable and blockers; a quote is a report, never an HTTP error. The
    * only exceptions: 503 CONFIG_UNAVAILABLE, and 403 ADDRESS_NOT_OWNED for an
    * explicit addressId that is not the caller's.
@@ -162,7 +162,7 @@ export class CartController {
       validateRequired(quantity, "quantity");
       validatePositiveNumber(quantity, "Quantity");
 
-      // Verify product exists and is orderable (D-013)
+      // Verify product exists and is orderable
       const product = await this.productRepository.findById(productId);
       if (!product) {
         throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
@@ -225,7 +225,7 @@ export class CartController {
         throw new ApiError("Item not found in cart", 404);
       }
 
-      // Verify product is still orderable (D-013)
+      // Verify product is still orderable
       const product = await this.productRepository.findById(productId!);
       if (!product) {
         throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");

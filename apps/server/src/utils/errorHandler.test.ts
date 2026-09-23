@@ -12,7 +12,7 @@ const run = (err: Error) => {
   return { status: res.status.mock.calls[0]?.[0] as number, body: json.mock.calls[0]?.[0] };
 };
 
-describe("ApiError code serialisation (T1.3)", () => {
+describe("ApiError code serialisation", () => {
   it("emits {success,error,field,code} when a code is set", () => {
     const { status, body } = run(
       new ApiError("Address is outside the delivery radius", 422, undefined, "ADDRESS_NOT_SERVICEABLE")

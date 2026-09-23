@@ -1,5 +1,5 @@
 /**
- * QuoteService (D-012 §6, D-014 §4).
+ * QuoteService.
  *
  * Assembles bill lines from the cart + products, resolves the address to a
  * serviceability, and calls the pure computeBill. The SAME buildLines /
@@ -146,7 +146,7 @@ export class AddressNotOwnedError extends Error {
   }
 }
 
-/** What the API returns when no address is selected (D-012 §6: unknown + ADDRESS_REQUIRED). */
+/** What the API returns when no address is selected: unknown, with an ADDRESS_REQUIRED blocker. */
 export const noAddressServiceability = (config: StoreConfig): Serviceability => ({
   status: "unknown",
   distanceKm: null,

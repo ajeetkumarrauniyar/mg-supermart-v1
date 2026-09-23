@@ -5,7 +5,7 @@ import type { ErrorCode } from "./errorCodes.js";
 export class ApiError extends Error {
   public statusCode: number;
   public field?: string | undefined;
-  /** Optional machine-readable code (D-012 §9). Absent on legacy errors. */
+  /** Optional machine-readable code. Absent on older errors. */
   public code?: ErrorCode | undefined;
   /** Optional structured details echoed to the client (e.g. blockers[]). */
   public details?: Record<string, unknown> | undefined;

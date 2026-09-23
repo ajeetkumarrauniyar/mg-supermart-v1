@@ -23,7 +23,7 @@ import {
   OrderStatus,
 } from "../models/Order.js";
 
-/** users/{uid}/orderIdempotency/{key} → { orderId, createdAt } (PD-5). Local so firebase.ts stays untouched. */
+/** users/{uid}/orderIdempotency/{key} → { orderId, createdAt }. Kept local to this repository. */
 export const ORDER_IDEMPOTENCY_SUBCOLLECTION = "orderIdempotency";
 
 export interface IdempotencyRecord {
@@ -61,7 +61,7 @@ export class OrderRepository {
   /**
    * Reads the idempotency record and, when present, the original order —
    * inside the transaction, so a replay sees exactly what the first write
-   * committed (D-004).
+   * committed.
    */
   async findByIdempotencyKey(
     tx: Transaction,
@@ -350,7 +350,7 @@ export class OrderRepository {
       status: order.status,
       shippingAddress: order.shippingAddress,
       paymentDetails: order.paymentDetails,
-      // Additive M1 fields (absent on orders created before Phase 1)
+      // Additive fields; absent on orders created before checkout was reworked
       ...(order.paymentStatus !== undefined && { paymentStatus: order.paymentStatus }),
       ...(order.bill !== undefined && { bill: order.bill }),
       ...(order.appliedConfig !== undefined && { appliedConfig: order.appliedConfig }),

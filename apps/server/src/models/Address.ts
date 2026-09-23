@@ -2,10 +2,10 @@ import { Timestamp } from "firebase-admin/firestore";
 import type { Serviceability } from "../domain/types.js";
 
 /**
- * Customer delivery address (D-003, D-012).
+ * Customer delivery address.
  *
- * Stored at users/{uid}/addresses/{addressId} (PD-3): ownership is the path.
- * Coordinates are required in M1 (captured from device GPS or a map pin — no
+ * Stored at users/{uid}/addresses/{addressId}: ownership is the path.
+ * Coordinates are required (captured from device GPS or a map pin — no
  * geocoding). `pincode` is optional and never gating. There is deliberately
  * no `city` / `state`, and NEVER an `isServiceable` field — serviceability is
  * computed on every read against current StoreConfig, not persisted.

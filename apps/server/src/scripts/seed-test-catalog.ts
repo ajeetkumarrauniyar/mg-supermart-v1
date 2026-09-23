@@ -5,7 +5,7 @@
  *   pnpm --filter @mg-mart/server seed:test -- --reset # delete SEED-* first
  *   FIREBASE_PROJECT_ID=mg-supermart-staging pnpm ... seed:test -- --allow-project
  *
- * Refuses mg-supermart-prod unconditionally (D-006).
+ * Refuses the production project unconditionally.
  */
 import dotenv from "dotenv";
 dotenv.config();

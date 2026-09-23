@@ -1,12 +1,12 @@
 /**
- * Pure domain types for checkout (D-012, D-013, D-014).
+ * Pure domain types for checkout.
  *
  * Nothing in src/domain imports Firebase or reads process.env; every function
  * takes plain data and returns plain data so it is unit-testable without the
- * emulator (PD-6).
+ * emulator.
  */
 
-/** A flat fee, optionally waived once `subtotal` reaches a threshold (D-014). */
+/** A flat fee, optionally waived once `subtotal` reaches a threshold. */
 export interface FeeRule {
   /** 0 ⇒ the fee does not exist. */
   amount: number;
@@ -14,11 +14,13 @@ export interface FeeRule {
   waivedAtOrAbove: number | null;
 }
 
-/** Typed business configuration — the single interface for rules (D-014 §1). */
+/** Typed business configuration — the single interface for pricing and delivery rules. */
 export interface StoreConfig {
-  store: { lat: number; lng: number }; // D-011
-  deliveryRadiusKm: number; // D-011 / D-012
-  minOrderValue: number; // Founder Brief §9
+  store: { lat: number; lng: number };
+  /** Hard straight-line limit; there is no warning band beyond it. */
+  deliveryRadiusKm: number;
+  /** Rupee threshold the non-exempt part of a cart must reach. */
+  minOrderValue: number;
   deliveryFee: FeeRule;
   handlingFee: FeeRule;
   source: "env";
@@ -28,7 +30,7 @@ export interface StoreConfig {
 export type ServiceabilityStatus = "serviceable" | "not_serviceable" | "unknown";
 export type ServiceabilityReason = "OUTSIDE_RADIUS" | "NO_COORDINATES";
 
-/** Computed, never persisted (D-012 §1). */
+/** Computed per request against current configuration; never persisted. */
 export interface Serviceability {
   status: ServiceabilityStatus;
   /** Straight-line distance in km, 2 dp; null when coordinates are missing. */
@@ -42,7 +44,7 @@ export interface GeoPoint {
   lng: number;
 }
 
-/** Admin-owned persisted product facts (D-013). */
+/** Admin-owned persisted product facts. */
 export interface ProductFlags {
   isActive: boolean;
   isAvailable: boolean;
@@ -93,7 +95,7 @@ export interface AppliedConfig {
   deliveryRadiusKm: number;
 }
 
-/** The authoritative bill (D-014 §4). Same object for quote and order. */
+/** The authoritative bill. The same object is returned by quote and stored on the order. */
 export interface Bill {
   lines: BillLine[];
   subtotal: number;

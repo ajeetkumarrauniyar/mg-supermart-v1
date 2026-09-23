@@ -1,5 +1,5 @@
 /**
- * Address routes (D-003, D-012, T4.1).
+ * Address routes.
  *
  * Mounted by routes/index.ts as `/v1/addresses` under app.ts `/api`, so the
  * public URL is /api/v1/addresses. This router declares only bare paths —

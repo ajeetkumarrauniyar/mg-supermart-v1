@@ -1,11 +1,17 @@
-# `packages/types` delta for M1 — Phase 1 note (committed in Phase 2)
+# Shared types for the ordering API
 
-Per D-007 item 4, `packages/types` is changed as **one self-contained commit on `main`** and cherry-picked to
-`server` and `grocery-mobile` in Phase 2. Phase 1 only documents the exact additive delta; nothing in
-`packages/types` is touched on this branch (`git diff main server -- packages/types` stays empty).
+The server and the mobile app exchange the cart, quote, address and order shapes
+described here. `packages/types` is the shared package that carries them, and it
+is currently behind: this document lists exactly what it needs to gain so that
+both sides compile against one definition instead of two hand-copied ones.
 
-Types only — never values. Every entry below has a server counterpart in `apps/server/src/models` or
-`apps/server/src/domain/types.ts`.
+The package holds **types only — never values**: no fees, thresholds, radii or
+other business numbers, which are server configuration and reach the client only
+inside a quote. Every entry below has a counterpart in `apps/server/src/models`
+or `apps/server/src/domain/types.ts`, noted in a trailing comment.
+
+Keep the change additive and land it as a single self-contained commit, so the
+package stays byte-identical everywhere it is consumed.
 
 ## New files
 
@@ -88,7 +94,7 @@ export interface CreateOrderRequest { addressId: string; paymentMethod: "COD"; i
 code?: "ADDRESS_NOT_SERVICEABLE" | "ADDRESS_REQUIRED" | "ADDRESS_NOT_OWNED" | "ORDER_BELOW_MINIMUM" | "LINE_NOT_ORDERABLE" | "CART_EMPTY" | "CONFIG_UNAVAILABLE" | "IDEMPOTENCY_KEY_REQUIRED" | "VALIDATION_ERROR" | "FORBIDDEN" | "NOT_FOUND";
 ```
 
-## Review checklist (Phase 2)
-- [ ] no field in this delta lacks a server counterpart (checked against `src/models/*.ts`, `src/domain/types.ts`, `src/utils/errorCodes.ts`)
+## Review checklist
+- [ ] no field listed here lacks a server counterpart (check against `src/models/*.ts`, `src/domain/types.ts`, `src/utils/errorCodes.ts`)
 - [ ] no values, defaults or business numbers in `packages/types`
-- [ ] one commit on `main`, cherry-picked to `server` and `grocery-mobile`; `git diff main server -- packages/types` empty afterwards
+- [ ] landed as one self-contained commit, and the package is identical for every consumer afterwards

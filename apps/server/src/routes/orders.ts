@@ -19,10 +19,10 @@ router.use(authenticateToken);
 
 // Order routes
 router.post("/", orderController.createOrder);
-// B1: admin token → all orders; customer token → own orders only
+// Admin token → all orders; customer token → own orders only
 router.get("/", orderController.listOrders);
 router.get("/:orderId", orderController.getOrderById);
-// B1: status changes are admin-only
+// Status changes are admin-only
 router.put("/:orderId/status", requireAdmin, orderController.updateOrderStatus);
 router.put("/:orderId/cancel", orderController.cancelOrder);
 

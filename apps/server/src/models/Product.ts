@@ -38,15 +38,15 @@ export interface Product {
   isFeatured: boolean;
   /** Maximum retail price; BUSY sync writes mrp = price today. Informational. */
   mrp?: number;
-  // Admin-owned catalogue flags (D-013). Optional on the stored document because
+  // Admin-owned catalogue flags. Optional on the stored document because
   // existing products predate them; the server normalises missing values to
   // isActive=true, isAvailable=true, minOrderExempt=false. These three fields
   // must never appear in the BUSY sync payload (merge:true keeps them intact).
   /** Listed in the customer catalogue at all. false ⇒ hidden, cannot be carted. */
   isActive?: boolean;
-  /** The shop can supply it right now (ADM-08 "mark out of stock"). */
+  /** The shop can supply it right now; the admin "mark out of stock" switch. */
   isAvailable?: boolean;
-  /** Excluded from the ₹500 eligible amount (D-002). */
+  /** Excluded from the minimum-order eligible amount. */
   minOrderExempt?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -94,7 +94,7 @@ export interface ProductResponse {
   isActive: boolean;
   isAvailable: boolean;
   minOrderExempt: boolean;
-  /** Derived (isActive && isAvailable) — never persisted (D-013). */
+  /** Derived (isActive && isAvailable) — never persisted. */
   isOrderable: boolean;
   createdAt: string;
   updatedAt: string;

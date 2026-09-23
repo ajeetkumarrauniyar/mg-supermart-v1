@@ -154,7 +154,7 @@ export const putOrder = async (
     });
 };
 
-/** Loads the deterministic seed catalog (D-006) into the emulator. */
+/** Loads the deterministic seed catalog into the emulator. */
 export const seedCatalog = async (options: { reset?: boolean } = {}) => {
   const { getDb } = await import("../services/firebase.js");
   const { loadSeed, readSeedCatalog } = await import("../seed/loadSeed.js");

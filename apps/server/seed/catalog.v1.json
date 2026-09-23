@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Deterministic MG Supermart seed catalog for Phases 1-5 (D-006). Prices in whole rupees. Eligible price points: 320+180=500, 320+179=499, 320+181=501.",
+  "description": "Deterministic MG Supermart seed catalog for development and automated tests. Prices in whole rupees. Eligible price points: 320+180=500, 320+179=499, 320+181=501.",
   "admin": {
     "userId": "SEED-ADMIN",
     "email": "seed-admin@mg.test",
@@ -33,7 +33,7 @@
 
     { "productId": "SEED-INACTIVE-GHEE", "name": "Desi Ghee 500 g (delisted)",    "description": "isActive=false: hidden from customers",      "price": 350, "mrp": 380, "stock": 10, "category": "Dairy & Eggs",       "unit": "gram",  "isActive": false, "isAvailable": true,  "minOrderExempt": false },
     { "productId": "SEED-UNAVAIL-PANEER","name": "Paneer 200 g (not available)",  "description": "isAvailable=false: visible, cannot be ordered","price": 90, "mrp": 95,  "stock": 15, "category": "Dairy & Eggs",       "unit": "gram",  "isActive": true,  "isAvailable": false, "minOrderExempt": false },
-    { "productId": "SEED-ZEROSTOCK-BESAN","name": "Besan 500 g",                  "description": "stock=0 but orderable per flags (D-013)",    "price": 55,  "mrp": 60,  "stock": 0,  "category": "Pantry",             "unit": "gram",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
+    { "productId": "SEED-ZEROSTOCK-BESAN","name": "Besan 500 g",                  "description": "stock=0 but orderable per flags",         "price": 55,  "mrp": 60,  "stock": 0,  "category": "Pantry",             "unit": "gram",  "isActive": true,  "isAvailable": true,  "minOrderExempt": false },
     { "productId": "SEED-NOFLAGS-MAGGI",  "name": "Instant Noodles (pack of 4)",  "description": "Legacy document: no flag fields at all",     "price": 56,  "mrp": 56,  "stock": 40, "category": "Snacks",             "unit": "pack" }
   ]
 }

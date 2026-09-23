@@ -145,9 +145,9 @@ export class CartRepository {
   /**
    * Retrieves the complete cart for a user with product details and totals.
    *
-   * D-013: stock is informational in M1 and is NOT consulted. Lines whose
-   * product has become non-orderable are kept and flagged (isOrderable=false,
-   * blocker) so the quote can explain them — never silently removed (EP-4.6).
+   * Stock is informational and is NOT consulted. Lines whose product has
+   * become non-orderable are kept and flagged (isOrderable=false, blocker) so
+   * the quote can explain them — never silently removed.
    * Only a line whose product document no longer exists at all is dropped,
    * because it cannot be named or priced.
    *

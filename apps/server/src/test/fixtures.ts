@@ -1,7 +1,7 @@
 /** Shared pure fixtures for unit tests (no Firebase). */
 import type { StoreConfig } from "../domain/types.js";
 
-export const STORE = { lat: 26.48872184, lng: 84.98157501 }; // D-011
+export const STORE = { lat: 26.48872184, lng: 84.98157501 };
 
 export const baseConfig = (overrides: Partial<StoreConfig> = {}): StoreConfig => ({
   store: STORE,
@@ -28,7 +28,7 @@ export const validEnv = (): Record<string, string> => ({
 /**
  * Verbatim copy of apps/grocery-app/src/utils/location.ts#calculateDistance
  * (grocery-mobile branch) so the parity test documents that server and
- * client agree on the same fixture (Phase 3 replaces the client verdict).
+ * client agree on the same fixture.
  */
 export function mobileCalculateDistance(
   lat1: number,

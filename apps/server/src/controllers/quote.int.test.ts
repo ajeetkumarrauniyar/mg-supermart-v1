@@ -1,4 +1,4 @@
-/** T5.1 — POST /cart/quote on the seed catalog (D-012 §6, D-014 §4). */
+/** POST /cart/quote against the seed catalog. */
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import {

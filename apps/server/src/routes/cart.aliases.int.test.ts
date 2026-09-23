@@ -1,4 +1,4 @@
-/** T5.3 — canonical /cart/items/:id routes plus deprecated aliases, /cart/count. */
+/** Canonical /cart/items/:id routes plus deprecated aliases and /cart/count. */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { getApp, clearEmulator, seedCatalog, registerUser, fillCart, auth, type TestUser } from "../test/helpers.js";

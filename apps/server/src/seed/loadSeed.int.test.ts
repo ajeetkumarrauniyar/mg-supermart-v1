@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { clearEmulator, seedCatalog, hashSeedProducts, readDoc, listDocs } from "../test/helpers.js";
 
-describe("seed loader (D-006, T3.3)", () => {
+describe("seed loader", () => {
   beforeAll(async () => {
     await clearEmulator();
   });
@@ -21,7 +21,7 @@ describe("seed loader (D-006, T3.3)", () => {
     expect(await hashSeedProducts()).toBe(h1);
   });
 
-  it("contains the D-006 required fixtures", async () => {
+  it("contains the required catalogue fixtures", async () => {
     const { catalog } = await seedCatalog();
     const byId = Object.fromEntries(catalog.products.map((p) => [p.productId, p]));
     const exempt = catalog.products.filter((p) => p.minOrderExempt).map((p) => p.productId).sort();

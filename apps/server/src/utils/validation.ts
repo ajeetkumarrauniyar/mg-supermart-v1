@@ -184,7 +184,7 @@ export const validateUpdateProduct = (
 };
 
 /**
- * Validates the admin-owned catalogue flags when present (D-013).
+ * Validates the admin-owned catalogue flags when present.
  * They must be real booleans — "false" strings would otherwise be truthy.
  * @param data - Object that may carry isActive / isAvailable / minOrderExempt / mrp
  * @throws ValidationError when a provided flag is not a boolean
@@ -228,7 +228,7 @@ export const validateId = (value: unknown, fieldName: string): string => {
 };
 
 /**
- * Validates the POST /orders body (D-004, D-005, D-012 §7).
+ * Validates the POST /orders body.
  * Shape: { addressId, paymentMethod: "COD", idempotencyKey }. The cart, prices,
  * rules and serviceability are read server-side inside the transaction — the
  * client sends none of them. The idempotency key is checked by the controller
@@ -245,7 +245,7 @@ export const validateCreateOrder = (body: Record<string, unknown>): CreateOrderR
     throw new ValidationError("paymentMethod is required", "paymentMethod");
   }
   if (paymentMethod !== "COD") {
-    // D-005: cash on delivery only in M1; "Online" is reserved, not accepted
+    // Cash on delivery only; "Online" is reserved for a later payment integration.
     throw new ValidationError("Only COD is supported at the moment", "paymentMethod");
   }
 
@@ -345,7 +345,7 @@ const isValidUrl = (url: string): boolean => {
 };
 
 /**
- * Validates and normalises an address payload (D-012 §4).
+ * Validates and normalises an address payload.
  * Shape only — serviceability is never a validation concern. `lat`/`lng` are
  * required and must be real coordinates; `pincode` is optional and never gating.
  * Errors name the field so the client can highlight it without erasing input.

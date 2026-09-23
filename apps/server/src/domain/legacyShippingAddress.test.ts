@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { toLegacyShippingAddress } from "./legacyShippingAddress.js";
 import { parseLegacyCompat } from "../config/legacyCompat.js";
 
-describe("toLegacyShippingAddress (T5.2 compatibility mapping)", () => {
+describe("toLegacyShippingAddress", () => {
   const compat = parseLegacyCompat({ LEGACY_SHIPPING_STATE: "StateFromEnv" });
 
   it("maps line1+landmark → street, area → city, pincode → zipCode, compat → state", () => {

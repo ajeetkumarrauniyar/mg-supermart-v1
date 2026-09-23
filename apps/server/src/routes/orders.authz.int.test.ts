@@ -1,6 +1,7 @@
 /**
- * B1 regression suite (ISS-001, ISS-002). Pinned so that a future route
- * overwrite (the f038693 pattern) cannot silently reopen the hole.
+ * Order authorisation regression suite. Pinned so that a future wholesale
+ * rewrite of the route file cannot silently reopen the hole: customers must
+ * never see other customers' orders, and only admins may change status.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";

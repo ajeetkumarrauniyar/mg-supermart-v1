@@ -18,7 +18,7 @@ import {
 const router: Router = Router();
 const productController = new ProductController();
 
-// Public routes (optionalAuth so an admin token can see inactive products — D-013)
+// Public routes; optionalAuth lets an admin token see inactive products
 router.get("/", optionalAuth, productController.getAllProducts);
 router.get("/:productId", optionalAuth, productController.getProductById);
 

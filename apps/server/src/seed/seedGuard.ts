@@ -1,5 +1,5 @@
 /**
- * Where the seed loader is allowed to write (D-006, ISS-015). Pure.
+ * Where the seed loader is allowed to write. Pure.
  *
  * Allowed:  the Firestore emulator (FIRESTORE_EMULATOR_HOST set), or the
  *           staging project when --allow-project is passed explicitly.

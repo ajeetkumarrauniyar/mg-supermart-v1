@@ -166,7 +166,7 @@ async function testOrderRepository(userId: string, productId: string) {
   console.log("🧪 Testing OrderRepository...");
 
   try {
-    // Test creating an order (Phase 1: orders are written inside a transaction)
+    // Test creating an order (orders are written inside a transaction)
     const orderId = orderRepo.newOrderId();
     const now = createTimestamp();
     await getDb().runTransaction(async (tx) => {

@@ -1,4 +1,4 @@
-/** T3.2 — cart add/update respect orderability; lines are kept and flagged. */
+/** Cart add/update respect orderability; lines are kept and flagged. */
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import {
@@ -43,7 +43,7 @@ describe("POST /api/v1/cart/add", () => {
     expect(res.body.reason).toBe("UNAVAILABLE");
   });
 
-  it("allows a stock=0 product that is orderable per flags (D-013)", async () => {
+  it("allows a stock=0 product that is orderable per flags", async () => {
     const app = await getApp();
     const res = await request(app)
       .post("/api/v1/cart/add")

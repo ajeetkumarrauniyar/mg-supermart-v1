@@ -18,7 +18,7 @@ const line = (o: Partial<BillLineInput> & { unitPrice: number; quantity: number 
   quantity: o.quantity,
 });
 
-describe("computeBill (D-014 §4, D-002)", () => {
+describe("computeBill", () => {
   it("happy path: eligible ≥ 500, fees apply, total = subtotal + fees", () => {
     const b = computeBill(
       [line({ productId: "RICE", unitPrice: 320, quantity: 2 })],

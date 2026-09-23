@@ -16,7 +16,7 @@ import type {
  */
 const rupees = (n: number): number => Math.round(n);
 
-/** A fee applies iff it exists and the waiver threshold (on subtotal) is not met (D-014). */
+/** A fee applies iff it exists and the waiver threshold (on subtotal) is not met. */
 export const feeFor = (rule: FeeRule, subtotal: number): number => {
   if (rule.amount <= 0) return 0;
   if (rule.waivedAtOrAbove !== null && subtotal >= rule.waivedAtOrAbove) return 0;
@@ -24,7 +24,7 @@ export const feeFor = (rule: FeeRule, subtotal: number): number => {
 };
 
 /**
- * The authoritative bill (D-014 §4, D-002, D-012 §6).
+ * The authoritative bill: every rupee the customer will pay, and why they cannot order.
  *
  * Pure: takes a StoreConfig literal and a precomputed serviceability, never
  * touches process.env or Firestore. Quote and order creation both call this;

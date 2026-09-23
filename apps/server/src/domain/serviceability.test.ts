@@ -5,7 +5,7 @@ import { baseConfig, STORE, mobileCalculateDistance } from "../test/fixtures.js"
 
 const cfg = baseConfig();
 
-describe("computeServiceability (D-012)", () => {
+describe("computeServiceability", () => {
   it("the store itself is 0 km and serviceable", () => {
     expect(computeServiceability(STORE, cfg)).toEqual({
       status: "serviceable",

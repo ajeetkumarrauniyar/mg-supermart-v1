@@ -80,12 +80,12 @@ export class ProductController {
         filterOptions.isFeatured = featured === "true";
       }
 
-      // D-013: `inStock` is re-mapped to the derived isOrderable verdict
+      // `inStock` is re-mapped to the derived isOrderable verdict
       if (inStock === "true" || inStock === "1") {
         filterOptions.inStock = true;
       }
 
-      // D-013: only admins may see isActive=false products; customers never do
+      // Only admins may see isActive=false products; customers never do
       if (includeInactive === "true" || includeInactive === "1") {
         if (req.user?.role !== "admin") {
           throw new ApiError("Admin access required", 403, undefined, "FORBIDDEN");
@@ -166,7 +166,7 @@ export class ProductController {
         throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
 
-      // D-013: isActive=false is hidden from customers (404); admins see it
+      // isActive=false is hidden from customers (404); admins see it
       if (!product.isActive && req.user?.role !== "admin") {
         throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
@@ -393,7 +393,7 @@ export class ProductController {
       if (stock !== undefined) updateData.stock = parseInt(stock, 10);
       if (unit !== undefined) updateData.unit = unit;
       if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
-      // D-013 admin-owned flags — the only write path besides the seed loader
+      // Admin-owned flags — the only write path besides the seed loader
       if (mrp !== undefined) updateData.mrp = mrp;
       if (isActive !== undefined) updateData.isActive = isActive;
       if (isAvailable !== undefined) updateData.isAvailable = isAvailable;

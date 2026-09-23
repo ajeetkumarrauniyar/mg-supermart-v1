@@ -6,8 +6,8 @@ const toRad = (deg: number): number => (deg * Math.PI) / 180;
 
 /**
  * Great-circle (Haversine) distance between two points, in kilometres.
- * Straight-line, not road distance (D-011). Same formula as the mobile
- * app's calculateDistance so the two agree on fixtures (Phase 3 parity).
+ * Straight-line, not road distance. Matches the formula the mobile app uses
+ * so client and server agree on the same coordinates.
  */
 export const haversineKm = (a: GeoPoint, b: GeoPoint): number => {
   const dLat = toRad(b.lat - a.lat);
