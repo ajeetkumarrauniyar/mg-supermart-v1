@@ -1,6 +1,22 @@
 import { Request, Response, NextFunction } from "express";
 import { ValidationError } from "./validation.js";
-import type { ErrorCode } from "./errorCodes.js";
+import { ERROR_CODES, type ErrorCode } from "./errorCodes.js";
+
+/**
+ * True only for the application's own error codes. Anything thrown by a
+ * library can carry an unrelated `code` — Firestore/gRPC errors use numbers —
+ * and those must never reach the client as an API error code.
+ */
+const isErrorCode = (value: unknown): value is ErrorCode =>
+  typeof value === "string" && (ERROR_CODES as readonly string[]).includes(value);
+
+/**
+ * True for a plain object safe to merge into the response envelope. Strings are
+ * rejected deliberately: spreading one produces character-indexed keys, and a
+ * library's `details` string is internal detail the client must not see.
+ */
+const isSafeDetails = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 export class ApiError extends Error {
   public statusCode: number;
@@ -49,11 +65,16 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  // An error that declares its own statusCode came from application code;
+  // anything else (a Firestore/gRPC failure, a programming error) is internal.
+  const isApplicationError =
+    typeof error.statusCode === "number" || error instanceof ValidationError;
+
   let statusCode = error.statusCode || 500;
   let message = error.message || "Internal Server Error";
   let field = error.field;
-  let code = error.code;
-  const details = error.details;
+  let code = isErrorCode(error.code) ? error.code : undefined;
+  const details = isSafeDetails(error.details) ? error.details : undefined;
 
   // Handle specific error types
   if (error instanceof ValidationError) {
@@ -79,8 +100,14 @@ export const errorHandler = (
     message = "Resource not found";
   }
 
+  // Internal failures must not describe themselves to the client; the real
+  // message is logged below and stays server-side.
+  if (!isApplicationError && statusCode >= 500) {
+    message = "Internal Server Error";
+  }
+
   // Log error for debugging
-  console.error(`Error ${statusCode}: ${message}`, {
+  console.error(`Error ${statusCode}: ${error.message}`, {
     error: error.message,
     stack: error.stack,
     url: req.url,

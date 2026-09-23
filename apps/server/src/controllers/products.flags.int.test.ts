@@ -89,6 +89,38 @@ describe("GET /api/v1/products/:id", () => {
   });
 });
 
+describe("GET /api/v1/products/:id — malformed ids never expose datastore internals", () => {
+  it("a normal nonexistent id still returns a controlled 404 NOT_FOUND", async () => {
+    const app = await getApp();
+    const res = await request(app).get("/api/v1/products/does-not-exist-123");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ success: false, error: "Product not found", field: undefined, code: "NOT_FOUND" });
+  });
+
+  it.each(["__x__", "a%2Fb", "__name__"])(
+    "reserved/malformed id %s → 400 VALIDATION_ERROR, no datastore internals",
+    async (bad) => {
+      const app = await getApp();
+      const res = await request(app).get(`/api/v1/products/${bad}`);
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.field).toBe("productId");
+      const serialised = JSON.stringify(res.body);
+      expect(serialised).not.toContain("INVALID_ARGUMENT");
+      expect(serialised).not.toContain("reserved");
+      expect(res.body["0"]).toBeUndefined();
+      expect(typeof res.body.code).toBe("string");
+    }
+  );
+
+  it("a valid existing id still returns 200", async () => {
+    const app = await getApp();
+    const res = await request(app).get("/api/v1/products/SEED-RICE-5KG");
+    expect(res.status).toBe(200);
+    expect(res.body.data.productId).toBe("SEED-RICE-5KG");
+  });
+});
+
 describe("PUT /api/v1/products/:id (admin)", () => {
   it("flips the three flags; the response derives isOrderable; nothing else changes", async () => {
     const app = await getApp();

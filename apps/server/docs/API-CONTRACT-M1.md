@@ -17,7 +17,10 @@ Volatile values (ids, timestamps) are replaced with placeholders.
 ## 1. Error envelope
 
 Every error is `{ success: false, error: string, field?: string, code?: string, …details }`.
-`code` is optional; older errors that predate it are unchanged.
+`code` is optional; older errors that predate it are unchanged. When present it is always one of the
+values below — codes and structured details coming from libraries are never passed through, and an
+unexpected internal failure answers `500 { success: false, error: "Internal Server Error" }` with no
+`code`, no details and no internal message.
 
 | code | HTTP | Where |
 |---|---|---|
@@ -26,6 +29,7 @@ Every error is `{ success: false, error: string, field?: string, code?: string, 
 | `FORBIDDEN` | 403 | `includeInactive=1` without an admin token |
 | `ADDRESS_NOT_OWNED` | 403 | any `addressId` that is not the caller's (addresses, quote, orders) |
 | `NOT_FOUND` | 404 | product not found, or inactive for a customer |
+| `VALIDATION_ERROR` | 400 | `:productId` that is not a legal document id (charset, length, or a reserved `__x__` form) |
 | `LINE_NOT_ORDERABLE` | 422 | cart add/update of a non-orderable product (`reason: INACTIVE\|UNAVAILABLE`); order creation |
 | `ORDER_BELOW_MINIMUM` | 422 | order creation |
 | `ADDRESS_NOT_SERVICEABLE` | 422 | order creation |
