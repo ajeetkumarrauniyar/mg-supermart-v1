@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase-admin/firestore";
+import type { LineBlockerReason } from "../domain/types.js";
 
 export interface CartItem {
   productId: string;
@@ -14,6 +15,10 @@ export interface CartItemWithProduct {
   unit: string;
   quantity: number;
   addedAt: Timestamp;
+  /** Derived; lines are kept and flagged, never silently removed. */
+  isOrderable: boolean;
+  minOrderExempt: boolean;
+  blocker?: LineBlockerReason;
 }
 
 export interface AddToCartInput {
@@ -33,6 +38,9 @@ export interface CartItemResponse {
   unit: string;
   quantity: number;
   addedAt: string;
+  isOrderable: boolean;
+  minOrderExempt: boolean;
+  blocker?: LineBlockerReason;
 }
 
 export interface CartResponse {

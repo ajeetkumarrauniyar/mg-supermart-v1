@@ -3,7 +3,7 @@
  * Run this to verify all repositories are working correctly
  */
 
-import { initializeFirebase } from "../services/firebase.js";
+import { initializeFirebase, getDb, createTimestamp } from "../services/firebase.js";
 import {
   UserRepository,
   ProductRepository,
@@ -166,28 +166,37 @@ async function testOrderRepository(userId: string, productId: string) {
   console.log("🧪 Testing OrderRepository...");
 
   try {
-    // Test creating an order
-    const testOrder = await orderRepo.create({
-      userId: userId,
-      items: [
-        {
-          productId: productId,
-          name: "Test Banana",
-          price: 2.99,
-          quantity: 2,
+    // Test creating an order (orders are written inside a transaction)
+    const orderId = orderRepo.newOrderId();
+    const now = createTimestamp();
+    await getDb().runTransaction(async (tx) => {
+      orderRepo.createInTransaction(tx, {
+        orderId,
+        userId: userId,
+        items: [
+          {
+            productId: productId,
+            name: "Test Banana",
+            price: 2.99,
+            quantity: 2,
+          },
+        ],
+        totalAmount: 5.98,
+        status: "pending",
+        shippingAddress: {
+          street: "123 Test St",
+          city: "Test City",
+          state: "TC",
+          zipCode: "12345",
         },
-      ],
-      shippingAddress: {
-        street: "123 Test St",
-        city: "Test City",
-        state: "TC",
-        zipCode: "12345",
-      },
-      paymentDetails: {
-        paymentMethod: "Online",
-        transactionId: "test_txn_123",
-      },
+        paymentDetails: {
+          paymentMethod: "COD",
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
     });
+    const testOrder = { orderId };
     console.log("✅ Order created:", testOrder.orderId);
 
     // Test finding order by ID

@@ -175,7 +175,7 @@ class ControllerTester {
     this.app.get(
       "/api/orders/history",
       this.addAuthMiddleware,
-      this.orderController.getOrderHistory
+      this.orderController.listOrders
     );
     this.app.get("/api/orders/stats", this.orderController.getOrderStats);
     this.app.get(

@@ -1,14 +1,27 @@
 import { Request, Response, NextFunction } from "express";
 import { ValidationError } from "./validation.js";
+import type { ErrorCode } from "./errorCodes.js";
 
 export class ApiError extends Error {
   public statusCode: number;
   public field?: string | undefined;
+  /** Optional machine-readable code. Absent on older errors. */
+  public code?: ErrorCode | undefined;
+  /** Optional structured details echoed to the client (e.g. blockers[]). */
+  public details?: Record<string, unknown> | undefined;
 
-  constructor(message: string, statusCode: number = 500, field?: string) {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    field?: string,
+    code?: ErrorCode,
+    details?: Record<string, unknown>
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.field = field;
+    this.code = code;
+    this.details = details;
     this.name = "ApiError";
 
     if (Error.captureStackTrace) {
@@ -39,12 +52,15 @@ export const errorHandler = (
   let statusCode = error.statusCode || 500;
   let message = error.message || "Internal Server Error";
   let field = error.field;
+  let code = error.code;
+  const details = error.details;
 
   // Handle specific error types
   if (error instanceof ValidationError) {
     statusCode = 400;
     message = error.message;
     field = error.field;
+    code = "VALIDATION_ERROR";
   }
 
   // Handle Firebase errors
@@ -76,6 +92,8 @@ export const errorHandler = (
     success: false,
     error: message,
     field,
+    ...(code !== undefined && { code }),
+    ...(details !== undefined && details),
     ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
   });
 };

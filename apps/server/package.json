@@ -12,7 +12,11 @@
     "type-check": "tsc --noEmit",
     "lint": "echo 'Lint not configured yet'",
     "test-real-config": "tsx --tsconfig tsconfig.json src/test-real-config.ts",
-    "setup-firebase": "tsx --tsconfig tsconfig.json src/setup-firebase.ts"
+    "setup-firebase": "tsx --tsconfig tsconfig.json src/setup-firebase.ts",
+    "test": "pnpm run test:unit && pnpm run test:int",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:int": "firebase emulators:exec --only firestore --project demo-mg-mart-test --config ../../firebase.json \"vitest run --config vitest.int.config.ts\"",
+    "seed:test": "tsx --tsconfig tsconfig.json src/scripts/seed-test-catalog.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,12 +24,16 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.11",
+    "@types/supertest": "^7.2.1",
     "fast-check": "^3.15.1",
+    "firebase-tools": "^15.30.2",
     "jest": "^29.7.0",
     "nodemon": "^3.1.10",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "@mg-mart/types": "workspace:*",

@@ -14,18 +14,91 @@ import { ProductRepository } from "../repositories/ProductRepository.js";
 import {
   validateRequired,
   validatePositiveNumber,
+  validateId,
 } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
+import { lineBlocker } from "../domain/orderability.js";
+import type { ProductResponse } from "../models/Product.js";
+import {
+  QuoteService,
+  AddressNotOwnedError,
+  noAddressServiceability,
+} from "../services/QuoteService.js";
+import { requireStoreConfig } from "./AddressController.js";
+
+/** Only the derived orderability verdict gates carting; stock is informational. */
+const assertOrderable = (product: ProductResponse): void => {
+  const reason = lineBlocker(product);
+  if (reason !== null) {
+    throw new ApiError(
+      reason === "INACTIVE"
+        ? `${product.name} is no longer listed`
+        : `${product.name} is not available right now`,
+      422,
+      "productId",
+      "LINE_NOT_ORDERABLE",
+      { reason, productId: product.productId }
+    );
+  }
+};
 
 export class CartController {
   private cartRepository: CartRepository;
   private productRepository: ProductRepository;
+  private quoteService: QuoteService;
 
   constructor() {
     this.cartRepository = new CartRepository();
     this.productRepository = new ProductRepository();
+    this.quoteService = new QuoteService();
   }
+
+  /**
+   * POST /cart/quote { addressId? } — the authoritative bill for this cart
+   * and address. Always 200 with serviceability, bill,
+   * orderable and blockers; a quote is a report, never an HTTP error. The
+   * only exceptions: 503 CONFIG_UNAVAILABLE, and 403 ADDRESS_NOT_OWNED for an
+   * explicit addressId that is not the caller's.
+   */
+  quote = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new ApiError("User not authenticated", 401);
+      }
+
+      const body = (req.body ?? {}) as { addressId?: unknown };
+      const addressId =
+        typeof body.addressId === "string" && body.addressId.trim() !== ""
+          ? validateId(body.addressId, "addressId")
+          : undefined;
+
+      const config = requireStoreConfig();
+      const quote = await this.quoteService.assemble(userId, addressId, config);
+
+      res.json({
+        success: true,
+        data: {
+          addressId: quote.address?.addressId ?? null,
+          serviceability: quote.serviceability ?? noAddressServiceability(config),
+          bill: quote.bill,
+          orderable: quote.bill.orderable,
+          blockers: quote.bill.blockers,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AddressNotOwnedError) {
+        next(new ApiError("Address not found for this account", 403, "addressId", "ADDRESS_NOT_OWNED"));
+        return;
+      }
+      next(error);
+    }
+  };
 
   /**
    * Get user's current cart with all items and totals
@@ -89,18 +162,12 @@ export class CartController {
       validateRequired(quantity, "quantity");
       validatePositiveNumber(quantity, "Quantity");
 
-      // Verify product exists and has sufficient stock
+      // Verify product exists and is orderable
       const product = await this.productRepository.findById(productId);
       if (!product) {
-        throw new ApiError("Product not found", 404);
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
-
-      if (product.stock < quantity) {
-        throw new ApiError(
-          `Insufficient stock. Available: ${product.stock}`,
-          400
-        );
-      }
+      assertOrderable(product);
 
       // Add item to cart using repository
       const addItemInput = {
@@ -158,18 +225,12 @@ export class CartController {
         throw new ApiError("Item not found in cart", 404);
       }
 
-      // Verify product stock
+      // Verify product is still orderable
       const product = await this.productRepository.findById(productId!);
       if (!product) {
-        throw new ApiError("Product not found", 404);
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
-
-      if (product.stock < quantity) {
-        throw new ApiError(
-          `Insufficient stock. Available: ${product.stock}`,
-          400
-        );
-      }
+      assertOrderable(product);
 
       // Update item quantity
       const updateInput: UpdateCartItemInput = {

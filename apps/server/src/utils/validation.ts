@@ -11,8 +11,9 @@
 
 import { CreateUserInput, UpdateUserInput } from "../models/User.js";
 import { CreateProductInput, UpdateProductInput } from "../models/Product.js";
-import { CreateOrderInput } from "../models/Order.js";
+import type { CreateOrderRequest } from "../models/Order.js";
 import { AddToCartInput, UpdateCartItemInput } from "../models/Cart.js";
+import type { AddressInput } from "../models/Address.js";
 
 /**
  * Custom error class for validation failures
@@ -178,47 +179,82 @@ export const validateUpdateProduct = (
   if (productData.imageUrl && !isValidUrl(productData.imageUrl)) {
     throw new ValidationError("Valid image URL is required", "imageUrl");
   }
+
+  validateProductFlags(productData);
 };
 
 /**
- * Validates order creation data including items, shipping address, and payment details
- * Ensures order has valid items and complete shipping/payment information
- * @param orderData - Order data to validate for creation
- * @throws ValidationError when validation rules are not met
+ * Validates the admin-owned catalogue flags when present.
+ * They must be real booleans — "false" strings would otherwise be truthy.
+ * @param data - Object that may carry isActive / isAvailable / minOrderExempt / mrp
+ * @throws ValidationError when a provided flag is not a boolean
  */
-export const validateCreateOrder = (orderData: CreateOrderInput): void => {
-  if (!orderData.items || orderData.items.length === 0) {
-    throw new ValidationError("Order must contain at least one item", "items");
-  }
-
-  // Validate each order item
-  for (const item of orderData.items) {
-    if (
-      !item.productId ||
-      !item.name ||
-      item.price <= 0 ||
-      item.quantity <= 0
-    ) {
-      throw new ValidationError("Invalid order item", "items");
+export const validateProductFlags = (data: {
+  isActive?: unknown;
+  isAvailable?: unknown;
+  minOrderExempt?: unknown;
+  mrp?: unknown;
+}): void => {
+  for (const key of ["isActive", "isAvailable", "minOrderExempt"] as const) {
+    if (data[key] !== undefined && typeof data[key] !== "boolean") {
+      throw new ValidationError(`${key} must be a boolean`, key);
     }
   }
+  if (data.mrp !== undefined && (typeof data.mrp !== "number" || data.mrp < 0)) {
+    throw new ValidationError("mrp must be a non-negative number", "mrp");
+  }
+};
 
-  if (
-    !orderData.shippingAddress ||
-    !orderData.shippingAddress.street ||
-    !orderData.shippingAddress.city ||
-    !orderData.shippingAddress.state ||
-    !orderData.shippingAddress.zipCode
-  ) {
-    throw new ValidationError(
-      "Complete shipping address is required",
-      "shippingAddress"
-    );
+/**
+ * Validates a client-supplied identifier that becomes a Firestore document id
+ * (addressId, idempotencyKey). Anything else — "..", "a/b", "__x__" — would
+ * reach the SDK as a raw path segment and surface as a 500 or a stray nested
+ * document. Firestore auto-ids and UUIDs always match.
+ * @param value - Raw value
+ * @param fieldName - Field name for the error
+ * @returns The trimmed id
+ * @throws ValidationError when missing or malformed
+ */
+export const validateId = (value: unknown, fieldName: string): string => {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new ValidationError(`${fieldName} is required`, fieldName);
+  }
+  const id = value.trim();
+  // charset + length, and Firestore's reserved __name__ pattern
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id) || /^__.*__$/.test(id)) {
+    throw new ValidationError(`${fieldName} is not a valid id`, fieldName);
+  }
+  return id;
+};
+
+/**
+ * Validates the POST /orders body.
+ * Shape: { addressId, paymentMethod: "COD", idempotencyKey }. The cart, prices,
+ * rules and serviceability are read server-side inside the transaction — the
+ * client sends none of them. The idempotency key is checked by the controller
+ * so it can carry its own error code.
+ * @param body - Raw request body
+ * @returns The validated request
+ * @throws ValidationError when a field is missing or unsupported
+ */
+export const validateCreateOrder = (body: Record<string, unknown>): CreateOrderRequest => {
+  const addressId = validateId(body.addressId, "addressId");
+
+  const paymentMethod = body.paymentMethod;
+  if (paymentMethod === undefined || paymentMethod === null || paymentMethod === "") {
+    throw new ValidationError("paymentMethod is required", "paymentMethod");
+  }
+  if (paymentMethod !== "COD") {
+    // Cash on delivery only; "Online" is reserved for a later payment integration.
+    throw new ValidationError("Only COD is supported at the moment", "paymentMethod");
   }
 
-  if (!orderData.paymentDetails || !orderData.paymentDetails.paymentMethod) {
-    throw new ValidationError("Payment details are required", "paymentDetails");
-  }
+  // Absence is reported by the controller as IDEMPOTENCY_KEY_REQUIRED; a present
+  // key must be a safe document id.
+  const rawKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+  const idempotencyKey = rawKey === "" ? "" : validateId(rawKey, "idempotencyKey");
+
+  return { addressId, paymentMethod: "COD", idempotencyKey };
 };
 
 /**
@@ -306,4 +342,64 @@ const isValidUrl = (url: string): boolean => {
   } catch {
     return false;
   }
+};
+
+/**
+ * Validates and normalises an address payload.
+ * Shape only — serviceability is never a validation concern. `lat`/`lng` are
+ * required and must be real coordinates; `pincode` is optional and never gating.
+ * Errors name the field so the client can highlight it without erasing input.
+ * @param body - Raw request body
+ * @returns A clean AddressInput (optional keys omitted when absent)
+ * @throws ValidationError when a field is missing or malformed
+ */
+export const validateAddressInput = (body: Record<string, unknown>): AddressInput => {
+  const str = (key: keyof AddressInput, required: boolean, max = 200): string | undefined => {
+    const v = body[key];
+    if (v === undefined || v === null || (typeof v === "string" && v.trim() === "")) {
+      if (required) throw new ValidationError(`${key} is required`, key);
+      return undefined;
+    }
+    if (typeof v !== "string") throw new ValidationError(`${key} must be a string`, key);
+    if (v.trim().length > max) throw new ValidationError(`${key} is too long`, key);
+    return v.trim();
+  };
+
+  const num = (key: keyof AddressInput, required: boolean, min: number, max: number): number | undefined => {
+    const v = body[key];
+    if (v === undefined || v === null || v === "") {
+      if (required) throw new ValidationError(`${key} is required`, key);
+      return undefined;
+    }
+    const n = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(n)) throw new ValidationError(`${key} must be a number`, key);
+    if (n < min || n > max) throw new ValidationError(`${key} must be between ${min} and ${max}`, key);
+    return n;
+  };
+
+  const phone = str("phone", true, 20)!;
+  if (!validatePhoneNumber(phone)) {
+    throw new ValidationError("Valid phone number is required", "phone");
+  }
+
+  const pincode = str("pincode", false, 10);
+  if (pincode !== undefined && !/^\d{6}$/.test(pincode)) {
+    throw new ValidationError("pincode must be 6 digits", "pincode");
+  }
+
+  const landmark = str("landmark", false);
+  const accuracyM = num("accuracyM", false, 0, 100_000);
+
+  return {
+    label: str("label", true, 40)!,
+    recipientName: str("recipientName", true, 100)!,
+    phone,
+    line1: str("line1", true)!,
+    ...(landmark !== undefined && { landmark }),
+    area: str("area", true)!,
+    ...(pincode !== undefined && { pincode }),
+    lat: num("lat", true, -90, 90)!,
+    lng: num("lng", true, -180, 180)!,
+    ...(accuracyM !== undefined && { accuracyM }),
+  };
 };

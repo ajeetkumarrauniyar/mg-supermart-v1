@@ -10,3 +10,4 @@ export { ProductController } from "./ProductController.js";
 export { CartController } from "./CartController.js";
 export { OrderController } from "./OrderController.js";
 export { AdminController } from "./AdminController.js";
+export { AddressController } from "./AddressController.js";

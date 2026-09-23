@@ -12,28 +12,38 @@ import { Request, Response, NextFunction } from "express";
 import { OrderRepository } from "../repositories/OrderRepository.js";
 import { CartRepository } from "../repositories/CartRepository.js";
 import { ProductRepository } from "../repositories/ProductRepository.js";
-import { validateRequired } from "../utils/validation.js";
+import { validateRequired, validateCreateOrder } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
-import {
-  CreateOrderInput,
-  OrderStatus,
-  PaymentMethod,
-} from "../models/Order.js";
+import { Order, OrderItem, OrderStatus, AddressSnapshot } from "../models/Order.js";
+import { getDb, createTimestamp } from "../services/firebase.js";
+import { QuoteService, AddressNotOwnedError } from "../services/QuoteService.js";
+import { requireStoreConfig } from "./AddressController.js";
+import { getLegacyCompat } from "../config/legacyCompat.js";
+import { toLegacyShippingAddress } from "../domain/legacyShippingAddress.js";
 
 export class OrderController {
   private orderRepository: OrderRepository;
   private cartRepository: CartRepository;
   private productRepository: ProductRepository;
+  private quoteService: QuoteService;
 
   constructor() {
     this.orderRepository = new OrderRepository();
     this.cartRepository = new CartRepository();
     this.productRepository = new ProductRepository();
+    this.quoteService = new QuoteService();
   }
 
   /**
-   * Create a new order from user's cart
-   * Validates cart, processes payment, updates inventory, and creates order
+   * Create a cash-on-delivery order from the user's cart.
+   *
+   * One Firestore transaction — reads first, then writes:
+   *   reads : idempotency record (replay ⇒ return the original order),
+   *           cart lines, products, the stored address
+   *   compute: serviceability from STORED coordinates + computeBill (the same
+   *           function the quote used); any blocker aborts with 422
+   *   writes: order doc, idempotency record, delete cart lines
+   * No stock is read for orderability and no stock is written.
    */
   createOrder = async (
     req: Request,
@@ -46,116 +56,128 @@ export class OrderController {
         throw new ApiError("User not authenticated", 401);
       }
 
-      const { paymentMethod, shippingAddress, notes } = req.body;
-
-      // Validate required fields
-      validateRequired(paymentMethod, "paymentMethod");
-      validateRequired(shippingAddress, "shippingAddress");
-
-      if (
-        !shippingAddress ||
-        !shippingAddress.street ||
-        !shippingAddress.city ||
-        !shippingAddress.state ||
-        !shippingAddress.zipCode
-      ) {
-        throw new ApiError("Complete shipping address is required", 400);
-      }
-
-      // Validate payment method
-      const validPaymentMethods: PaymentMethod[] = ["COD", "Online"];
-      if (!validPaymentMethods.includes(paymentMethod)) {
-        throw new ApiError("Invalid payment method", 400);
-      }
-
-      // Get user's cart
-      const cart = await this.cartRepository.getCart(userId);
-      if (!cart || cart.items.length === 0) {
-        throw new ApiError("Cart is empty", 400);
-      }
-
-      // Validate cart items and check stock
-      const orderItems = [];
-      let totalAmount = 0;
-
-      for (const cartItem of cart.items) {
-        const product = await this.productRepository.findById(
-          cartItem.productId
+      const { addressId, paymentMethod, idempotencyKey } = validateCreateOrder(req.body ?? {});
+      if (!idempotencyKey) {
+        throw new ApiError(
+          "idempotencyKey is required so retries do not create duplicate orders",
+          400,
+          "idempotencyKey",
+          "IDEMPOTENCY_KEY_REQUIRED"
         );
-
-        if (!product) {
-          throw new ApiError(
-            `Product ${cartItem.productId} is no longer available`,
-            400
-          );
-        }
-
-        if (product.stock < cartItem.quantity) {
-          throw new ApiError(
-            `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${cartItem.quantity}`,
-            400
-          );
-        }
-
-        const itemTotal = product.price * cartItem.quantity;
-        totalAmount += itemTotal;
-
-        orderItems.push({
-          productId: cartItem.productId,
-          productName: product.name,
-          quantity: cartItem.quantity,
-          unitPrice: product.price,
-          totalPrice: itemTotal,
-        });
       }
 
-      // Create order input matching the Order model structure
-      const createOrderInput: CreateOrderInput = {
-        userId,
-        items: orderItems.map((item) => ({
-          productId: item.productId,
-          name: item.productName,
-          price: item.unitPrice,
-          quantity: item.quantity,
-        })),
-        shippingAddress,
-        paymentDetails: {
-          paymentMethod: paymentMethod as PaymentMethod,
+      const config = requireStoreConfig();
+      const compat = getLegacyCompat();
+
+      const result = await getDb().runTransaction(
+        async (tx) => {
+          // --- reads ---
+          const existing = await this.orderRepository.findByIdempotencyKey(tx, userId, idempotencyKey);
+          if (existing) {
+            return { order: existing, replayed: true as const };
+          }
+
+          const quote = await this.quoteService.assemble(userId, addressId, config, tx);
+
+          if (!quote.bill.orderable) {
+            const first = quote.bill.blockers[0]!;
+            throw new ApiError(first.message, 422, undefined, first.code, {
+              blockers: quote.bill.blockers,
+              serviceability: quote.serviceability,
+            });
+          }
+
+          // orderable ⇒ address and serviceability are present
+          const address = quote.address!;
+          const serviceability = quote.serviceability!;
+
+          const items: OrderItem[] = quote.bill.lines.map((l) => ({
+            productId: l.productId,
+            name: l.name,
+            price: l.unitPrice, // legacy field read by the admin panel
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            lineTotal: l.lineTotal,
+            minOrderExempt: l.minOrderExempt,
+          }));
+
+          const addressSnapshot: AddressSnapshot = {
+            addressId: address.addressId,
+            label: address.label,
+            recipientName: address.recipientName,
+            phone: address.phone,
+            line1: address.line1,
+            ...(address.landmark !== undefined && { landmark: address.landmark }),
+            area: address.area,
+            ...(address.pincode !== undefined && { pincode: address.pincode }),
+            lat: address.lat,
+            lng: address.lng,
+            ...(address.accuracyM !== undefined && { accuracyM: address.accuracyM }),
+            distanceKm: serviceability.distanceKm,
+            radiusKm: serviceability.radiusKm,
+          };
+
+          const now = createTimestamp();
+          const order: Order = {
+            orderId: this.orderRepository.newOrderId(),
+            userId,
+            items,
+            totalAmount: quote.bill.total, // legacy mirror of bill.total
+            status: "pending",
+            shippingAddress: toLegacyShippingAddress(address, compat),
+            paymentDetails: { paymentMethod },
+            paymentStatus: "pending",
+            bill: quote.bill,
+            appliedConfig: quote.bill.appliedConfig,
+            addressSnapshot,
+            idempotencyKey,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          // --- writes ---
+          this.orderRepository.createInTransaction(tx, order);
+          quote.cartRefs.forEach((ref) => tx.delete(ref));
+
+          return { order, replayed: false as const };
         },
-      };
+        { maxAttempts: 20 }
+      );
 
-      // Create order
-      const order = await this.orderRepository.create(createOrderInput);
-
-      // Update product stock
-      for (const cartItem of cart.items) {
-        const product = await this.productRepository.findById(
-          cartItem.productId
-        );
-        if (product) {
-          await this.productRepository.update(cartItem.productId, {
-            stock: product.stock - cartItem.quantity,
-          });
-        }
+      const data = this.orderRepository.toResponse(result.order);
+      if (result.replayed) {
+        res.status(200).json({
+          success: true,
+          message: "Order already placed",
+          replayed: true,
+          data,
+        });
+        return;
       }
-
-      // Clear user's cart
-      await this.cartRepository.clearCart(userId);
 
       res.status(201).json({
         success: true,
         message: "Order created successfully",
-        data: order,
+        data,
       });
     } catch (error) {
+      if (error instanceof AddressNotOwnedError) {
+        next(new ApiError("Address not found for this account", 403, "addressId", "ADDRESS_NOT_OWNED"));
+        return;
+      }
       next(error);
     }
   };
 
   /**
-   * Get user's order history with pagination
+   * List orders for the caller.
+   *
+   * Admin token  → every order, with the existing status/userId filters and
+   *                pagination (delegates to getAllOrders — admin panel contract).
+   * Customer     → only the caller's own orders, scoped server-side by userId.
+   *                A customer-supplied `userId` query param is ignored.
    */
-  getOrderHistory = async (
+  listOrders = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -166,47 +188,41 @@ export class OrderController {
         throw new ApiError("User not authenticated", 401);
       }
 
-      const { limit = "10", offset = "0", status } = req.query;
+      if (req.user?.role === "admin") {
+        await this.getAllOrders(req, res, next);
+        return;
+      }
 
-      // Parse pagination parameters
+      const { limit = "20", offset = "0", status } = req.query;
+
       const limitNum = parseInt(limit as string, 10);
       const offsetNum = parseInt(offset as string, 10);
 
-      if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
-        throw new ApiError("Limit must be between 1 and 50", 400);
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+        throw new ApiError("Limit must be between 1 and 100", 400);
       }
 
       if (isNaN(offsetNum) || offsetNum < 0) {
         throw new ApiError("Offset must be a non-negative number", 400);
       }
 
-      // Get all orders and filter manually to avoid Firestore composite index requirement
-      const allOrders = await this.orderRepository.list({});
-      let orders = allOrders.filter((order) => order.userId === userId);
-
-      // Filter by status if provided
+      let statusFilter: OrderStatus | undefined;
       if (status) {
         const validStatuses: OrderStatus[] = [
           "pending",
           "processing",
           "shipped",
           "delivered",
-          "delivered",
           "cancelled",
         ];
         if (!validStatuses.includes(status as OrderStatus)) {
           throw new ApiError("Invalid order status", 400);
         }
-        orders = orders.filter((order) => order.status === status);
+        statusFilter = status as OrderStatus;
       }
 
-      // Sort by creation date (newest first)
-      orders.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      const orders = await this.orderRepository.listByUser(userId, statusFilter);
 
-      // Apply pagination
       const total = orders.length;
       const paginatedOrders = orders.slice(offsetNum, offsetNum + limitNum);
 
@@ -282,7 +298,7 @@ export class OrderController {
       }
 
       const { orderId } = req.params as Record<string, string>;
-      const { reason } = req.body;
+      const { reason } = req.body ?? {};
 
       if (!orderId) {
         throw new ApiError("Order ID is required", 400);
@@ -304,21 +320,13 @@ export class OrderController {
         throw new ApiError("Order cannot be cancelled at this stage", 400);
       }
 
-      // Update order status to cancelled
+      // Update order status to cancelled.
+      // No stock is restored: order creation never decrements stock, so
+      // restoring here would inflate the figure owned by the ERP sync.
       const updatedOrder = await this.orderRepository.updateStatus(
         orderId,
         "cancelled"
       );
-
-      // Restore product stock
-      for (const item of order.items) {
-        const product = await this.productRepository.findById(item.productId);
-        if (product) {
-          await this.productRepository.update(item.productId, {
-            stock: product.stock + item.quantity,
-          });
-        }
-      }
 
       res.json({
         success: true,

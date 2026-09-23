@@ -19,9 +19,18 @@ router.use(authenticateToken);
 
 // Cart routes
 router.get("/", cartController.getCart);
+router.get("/count", cartController.getCartItemCount);
 router.post("/add", cartController.addItem);
+// Authoritative bill for the cart + address
+router.post("/quote", cartController.quote);
+
+// Canonical item routes — what the mobile app calls
+router.put("/items/:productId", cartController.updateItem);
+router.delete("/items/:productId", cartController.removeItem);
+// Deprecated aliases, kept for existing clients
 router.put("/update/:productId", cartController.updateItem);
 router.delete("/remove/:productId", cartController.removeItem);
+
 router.delete("/clear", cartController.clearCart);
 
 export default router;

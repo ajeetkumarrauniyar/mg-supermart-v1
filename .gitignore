@@ -59,3 +59,11 @@ yarn-error.log*
 # IDEs and editors
 .vscode/
 apps/server/key.json
+
+# Firebase emulator logs
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
+# Server API documentation (the repo ignores *.md by default)
+!apps/server/docs/*.md

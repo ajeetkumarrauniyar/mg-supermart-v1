@@ -93,11 +93,11 @@ export const authenticateToken = async (
  * Optional authentication middleware
  * Attaches user info if token is present and valid, but doesn't require it
  */
-export const optionalAuth = (
+export const optionalAuth = async (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(" ")[1];
@@ -116,10 +116,19 @@ export const optionalAuth = (
     // Verify token
     const decoded = jwt.verify(token, secret) as JWTPayload;
 
-    // Attach user info to request
-    req.user = {
-      userId: decoded.userId,
-    };
+    // Load the role so public routes can offer admin-only views (e.g. inactive
+    // products). Only costs a read when a token is actually present.
+    const { UserRepository } = await import(
+      "../repositories/UserRepository.js"
+    );
+    const user = await new UserRepository().findById(decoded.userId);
+
+    if (user) {
+      req.user = {
+        userId: decoded.userId,
+        role: user.role,
+      };
+    }
 
     next();
   } catch (error) {

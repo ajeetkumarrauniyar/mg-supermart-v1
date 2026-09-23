@@ -13,6 +13,7 @@ import { ProductRepository } from "../repositories/ProductRepository.js";
 import {
   validateRequired,
   validatePositiveNumber,
+  validateUpdateProduct,
 } from "../utils/validation.js";
 import { ApiError } from "../utils/errorHandler.js";
 import {
@@ -43,6 +44,8 @@ export class ProductController {
         category,
         search,
         featured,
+        inStock,
+        includeInactive,
         limit = "20",
         offset = "0",
         sortBy = "name",
@@ -65,6 +68,8 @@ export class ProductController {
       const filterOptions: {
         category?: ProductCategory;
         isFeatured?: boolean;
+        inStock?: boolean;
+        includeInactive?: boolean;
       } = {};
 
       if (category) {
@@ -73,6 +78,19 @@ export class ProductController {
 
       if (featured !== undefined) {
         filterOptions.isFeatured = featured === "true";
+      }
+
+      // `inStock` is re-mapped to the derived isOrderable verdict
+      if (inStock === "true" || inStock === "1") {
+        filterOptions.inStock = true;
+      }
+
+      // Only admins may see isActive=false products; customers never do
+      if (includeInactive === "true" || includeInactive === "1") {
+        if (req.user?.role !== "admin") {
+          throw new ApiError("Admin access required", 403, undefined, "FORBIDDEN");
+        }
+        filterOptions.includeInactive = true;
       }
 
       // Load the full filtered set first so pagination metadata is correct.
@@ -145,7 +163,12 @@ export class ProductController {
 
       const product = await this.productRepository.findById(productId);
       if (!product) {
-        throw new ApiError("Product not found", 404);
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
+      }
+
+      // isActive=false is hidden from customers (404); admins see it
+      if (!product.isActive && req.user?.role !== "admin") {
+        throw new ApiError("Product not found", 404, undefined, "NOT_FOUND");
       }
 
       res.json({
@@ -342,6 +365,10 @@ export class ProductController {
         stock,
         unit,
         isFeatured,
+        mrp,
+        isActive,
+        isAvailable,
+        minOrderExempt,
       } = req.body;
 
       if (!productId) {
@@ -366,6 +393,13 @@ export class ProductController {
       if (stock !== undefined) updateData.stock = parseInt(stock, 10);
       if (unit !== undefined) updateData.unit = unit;
       if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+      // Admin-owned flags — the only write path besides the seed loader
+      if (mrp !== undefined) updateData.mrp = mrp;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+      if (minOrderExempt !== undefined) updateData.minOrderExempt = minOrderExempt;
+
+      validateUpdateProduct(updateData);
 
       const updatedProduct = await this.productRepository.update(
         productId,

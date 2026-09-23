@@ -34,7 +34,7 @@ export class AdminController {
          // Get basic statistics
          const orders = await this.orderRepository.list({ limit: 1000 });
          const users = await this.userRepository.list(1000);
-         const products = await this.productRepository.list();
+         const products = await this.productRepository.list({ includeInactive: true });
 
          res.json({
             success: true,

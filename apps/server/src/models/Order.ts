@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { Address } from "./User.js";
+import type { AppliedConfig, Bill } from "../domain/types.js";
 
 export type OrderStatus =
   | "pending"
@@ -10,11 +11,21 @@ export type OrderStatus =
 
 export type PaymentMethod = "COD" | "Online";
 
+/** Stored from the start so online payment can be added without reshaping orders. */
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
+/**
+ * One order line. `price`/`name` are the legacy fields the admin panel reads;
+ * `unitPrice`, `lineTotal` and `minOrderExempt` snapshot the pricing at order time.
+ */
 export interface OrderItem {
   productId: string;
   name: string;
   price: number;
   quantity: number;
+  unitPrice?: number;
+  lineTotal?: number;
+  minOrderExempt?: boolean;
 }
 
 export interface PaymentDetails {
@@ -22,6 +33,28 @@ export interface PaymentDetails {
   transactionId?: string;
 }
 
+/** Copy of the address as it was at order time, plus the serviceability facts. */
+export interface AddressSnapshot {
+  addressId: string;
+  label: string;
+  recipientName: string;
+  phone: string;
+  line1: string;
+  landmark?: string;
+  area: string;
+  pincode?: string;
+  lat: number;
+  lng: number;
+  accuracyM?: number;
+  distanceKm: number | null;
+  radiusKm: number;
+}
+
+/**
+ * Order document. Additive on top of the legacy shape: `items`,
+ * `totalAmount` (= bill.total) and `shippingAddress` keep the admin panel
+ * working; the new fields make the order self-contained and explainable.
+ */
 export interface Order {
   orderId: string;
   userId: string;
@@ -30,15 +63,20 @@ export interface Order {
   status: OrderStatus;
   shippingAddress: Address;
   paymentDetails: PaymentDetails;
+  paymentStatus?: PaymentStatus;
+  bill?: Bill;
+  appliedConfig?: AppliedConfig;
+  addressSnapshot?: AddressSnapshot;
+  idempotencyKey?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
-export interface CreateOrderInput {
-  userId: string;
-  items: OrderItem[];
-  shippingAddress: Address;
-  paymentDetails: PaymentDetails;
+/** Request body for POST /orders. */
+export interface CreateOrderRequest {
+  addressId: string;
+  paymentMethod: "COD";
+  idempotencyKey: string;
 }
 
 export interface UpdateOrderInput {
@@ -54,6 +92,11 @@ export interface OrderResponse {
   status: OrderStatus;
   shippingAddress: Address;
   paymentDetails: PaymentDetails;
+  paymentStatus?: PaymentStatus;
+  bill?: Bill;
+  appliedConfig?: AppliedConfig;
+  addressSnapshot?: AddressSnapshot;
+  idempotencyKey?: string;
   createdAt: string;
   updatedAt: string;
 }

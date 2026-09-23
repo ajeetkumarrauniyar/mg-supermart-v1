@@ -15,13 +15,21 @@ import {
   createTimestamp,
   timestampToString,
 } from "../services/firebase.js";
+import type { Transaction } from "firebase-admin/firestore";
 import {
   Order,
-  CreateOrderInput,
   UpdateOrderInput,
   OrderResponse,
   OrderStatus,
 } from "../models/Order.js";
+
+/** users/{uid}/orderIdempotency/{key} → { orderId, createdAt }. Kept local to this repository. */
+export const ORDER_IDEMPOTENCY_SUBCOLLECTION = "orderIdempotency";
+
+export interface IdempotencyRecord {
+  orderId: string;
+  createdAt: FirebaseFirestore.Timestamp;
+}
 
 /**
  * Repository class for order management operations
@@ -33,41 +41,51 @@ export class OrderRepository {
   /** Reference to the orders collection */
   private collection = this.db.collection(COLLECTIONS.ORDERS);
 
+  /** Allocates an order id without writing anything. */
+  newOrderId(): string {
+    return this.collection.doc().id;
+  }
+
+  orderRef(orderId: string) {
+    return this.collection.doc(orderId);
+  }
+
+  idempotencyRef(userId: string, idempotencyKey: string) {
+    return this.db
+      .collection(COLLECTIONS.USERS)
+      .doc(userId)
+      .collection(ORDER_IDEMPOTENCY_SUBCOLLECTION)
+      .doc(idempotencyKey);
+  }
+
   /**
-   * Creates a new order in the system
-   * Calculates total amount from order items and sets initial status
-   *
-   * @param orderData - Order data for creation
-   * @returns Promise resolving to the created order response
-   * @throws Error if order creation fails
+   * Reads the idempotency record and, when present, the original order —
+   * inside the transaction, so a replay sees exactly what the first write
+   * committed.
    */
-  async create(orderData: CreateOrderInput): Promise<OrderResponse> {
-    // Generate unique order ID
-    const orderId = this.collection.doc().id;
-    const now = createTimestamp();
+  async findByIdempotencyKey(
+    tx: Transaction,
+    userId: string,
+    idempotencyKey: string
+  ): Promise<Order | null> {
+    const recordSnap = await tx.get(this.idempotencyRef(userId, idempotencyKey));
+    if (!recordSnap.exists) return null;
+    const { orderId } = recordSnap.data() as IdempotencyRecord;
+    const orderSnap = await tx.get(this.orderRef(orderId));
+    return orderSnap.exists ? (orderSnap.data() as Order) : null;
+  }
 
-    // Calculate total amount from order items
-    const totalAmount = orderData.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    // Create order document with all required fields
-    const order: Order = {
-      orderId,
-      userId: orderData.userId,
-      items: orderData.items,
-      totalAmount,
-      status: "pending", // All orders start as pending
-      shippingAddress: orderData.shippingAddress,
-      paymentDetails: orderData.paymentDetails,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Save order to Firestore
-    await this.collection.doc(orderId).set(order);
-    return this.toResponse(order);
+  /**
+   * Stages the order and its idempotency record in the transaction. The
+   * caller has already done every read (Firestore requires reads before
+   * writes) and computed the bill with computeBill.
+   */
+  createInTransaction(tx: Transaction, order: Order): void {
+    tx.set(this.orderRef(order.orderId), order);
+    if (order.idempotencyKey) {
+      const record: IdempotencyRecord = { orderId: order.orderId, createdAt: order.createdAt };
+      tx.set(this.idempotencyRef(order.userId, order.idempotencyKey), record);
+    }
   }
 
   /**
@@ -155,6 +173,28 @@ export class OrderRepository {
     status: OrderStatus
   ): Promise<OrderResponse | null> {
     return this.update(orderId, { status });
+  }
+
+  /**
+   * Retrieves every order that belongs to one user, newest first.
+   *
+   * Scoped server-side by a single-field equality query, which needs no
+   * composite index (unlike userId + orderBy createdAt). A customer's own
+   * order set is small, so sorting/status filtering happens in memory.
+   *
+   * @param userId - Owner whose orders to return
+   * @param status - Optional status filter
+   */
+  async listByUser(userId: string, status?: OrderStatus): Promise<OrderResponse[]> {
+    const snapshot = await this.collection.where("userId", "==", userId).get();
+    let orders = snapshot.docs.map((doc) => this.toResponse(doc.data() as Order));
+    if (status) {
+      orders = orders.filter((order) => order.status === status);
+    }
+    orders.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return orders;
   }
 
   /**
@@ -301,7 +341,7 @@ export class OrderRepository {
    * @param order - Internal order model
    * @returns Order response object safe for API responses
    */
-  private toResponse(order: Order): OrderResponse {
+  toResponse(order: Order): OrderResponse {
     return {
       orderId: order.orderId,
       userId: order.userId,
@@ -310,6 +350,12 @@ export class OrderRepository {
       status: order.status,
       shippingAddress: order.shippingAddress,
       paymentDetails: order.paymentDetails,
+      // Additive fields; absent on orders created before checkout was reworked
+      ...(order.paymentStatus !== undefined && { paymentStatus: order.paymentStatus }),
+      ...(order.bill !== undefined && { bill: order.bill }),
+      ...(order.appliedConfig !== undefined && { appliedConfig: order.appliedConfig }),
+      ...(order.addressSnapshot !== undefined && { addressSnapshot: order.addressSnapshot }),
+      ...(order.idempotencyKey !== undefined && { idempotencyKey: order.idempotencyKey }),
       createdAt: timestampToString(order.createdAt),
       updatedAt: timestampToString(order.updatedAt),
     };
