@@ -21,5 +21,14 @@ export * from './order.js';
 // Shopping cart types for cart management
 export * from './cart.js';
 
+// Delivery address and computed serviceability types
+export * from './address.js';
+
+// Store configuration contract shapes (no values)
+export * from './config.js';
+
+// Authoritative bill and quote types for checkout
+export * from './bill.js';
+
 // Common API types for request/response patterns
 export * from './api.js';

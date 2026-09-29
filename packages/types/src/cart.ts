@@ -9,6 +9,8 @@
  * @version 1.0.0
  */
 
+import type { LineBlockerReason } from './bill.js';
+
 /**
  * Cart item data structure as received from API responses
  * Contains product information and cart-specific metadata
@@ -28,6 +30,15 @@ export interface CartItem {
     quantity: number;
     /** Timestamp when item was added as ISO string */
     addedAt: string;
+    /** Server's verdict that this line may be ordered */
+    isOrderable: boolean;
+    /** Whether this line counts toward the minimum order value */
+    minOrderExempt: boolean;
+    /**
+     * Why the line cannot be ordered. Present only when isOrderable is false;
+     * such lines are kept in the cart and flagged, never silently removed.
+     */
+    blocker?: LineBlockerReason;
 }
 
 /**

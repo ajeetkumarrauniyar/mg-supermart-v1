@@ -10,6 +10,7 @@
  */
 
 import { Address } from './user.js';
+import type { Bill } from './bill.js';
 
 /**
  * Order status enumeration for tracking order lifecycle
@@ -31,6 +32,12 @@ export type PaymentMethod =
     | 'Online';      // Online payment (credit card, digital wallet, etc.)
 
 /**
+ * Payment progress, stored from the start so that adding a non-cash method
+ * later does not reshape orders.
+ */
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+/**
  * Individual item within an order
  * Contains product information snapshot at the time of order placement
  */
@@ -43,6 +50,35 @@ export interface OrderItem {
     price: number;
     /** Quantity ordered */
     quantity: number;
+    /** Unit price snapshot; mirrors price on orders that carry a bill */
+    unitPrice?: number;
+    /** unitPrice x quantity at order time */
+    lineTotal?: number;
+    /** Whether the line was excluded from the minimum-order calculation */
+    minOrderExempt?: boolean;
+}
+
+/**
+ * The delivery address exactly as it stood when the order was placed, together
+ * with the distance facts behind the decision to accept it. Immune to later
+ * edits of the saved address.
+ */
+export interface AddressSnapshot {
+    addressId: string;
+    label: string;
+    recipientName: string;
+    phone: string;
+    line1: string;
+    landmark?: string;
+    area: string;
+    pincode?: string;
+    lat: number;
+    lng: number;
+    accuracyM?: number;
+    /** Straight-line distance from the store at order time. */
+    distanceKm: number | null;
+    /** The delivery radius that distance was accepted against. */
+    radiusKm: number;
 }
 
 /**
@@ -71,10 +107,24 @@ export interface Order {
     totalAmount: number;
     /** Current status of the order */
     status: OrderStatus;
-    /** Delivery address for the order */
+    /**
+     * Legacy flattened address, derived at order time for existing consumers.
+     * `addressSnapshot` is the authoritative record.
+     */
     shippingAddress: Address;
     /** Payment information for the order */
     paymentDetails: PaymentDetails;
+    /** Payment progress. Absent on orders placed before it was recorded. */
+    paymentStatus?: PaymentStatus;
+    /**
+     * The authoritative bill as shown to the customer before they confirmed.
+     * Absent on orders placed before bills were stored.
+     */
+    bill?: Bill;
+    /** The address as it stood at order time. Absent on older orders. */
+    addressSnapshot?: AddressSnapshot;
+    /** The key that made order creation safe to retry. */
+    idempotencyKey?: string;
     /** Order creation timestamp as ISO string */
     createdAt: string;
     /** Last update timestamp as ISO string */
@@ -82,16 +132,23 @@ export interface Order {
 }
 
 /**
- * Request payload for creating new orders
- * Contains all required information for order placement
+ * Request payload for creating an order.
+ *
+ * The client sends only a reference to a saved address, the payment method and
+ * a key that makes the call safe to retry. Items, prices, fees, eligibility and
+ * serviceability are all read and revalidated server-side from stored data, so
+ * they are deliberately absent here.
  */
 export interface CreateOrderRequest {
-    /** Array of items to order */
-    items: OrderItem[];
-    /** Delivery address */
-    shippingAddress: Address;
-    /** Payment information */
-    paymentDetails: PaymentDetails;
+    /** Which saved address to deliver to. */
+    addressId: string;
+    /** Cash on delivery is the only method currently accepted. */
+    paymentMethod: 'COD';
+    /**
+     * Client-generated key identifying one logical submission. Retrying with
+     * the same key returns the original order instead of creating another.
+     */
+    idempotencyKey: string;
 }
 
 /**
