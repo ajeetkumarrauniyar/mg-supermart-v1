@@ -54,6 +54,20 @@ export interface Product {
     unit: ProductUnit;
     /** Whether the product is featured on homepage */
     isFeatured: boolean;
+    /** Maximum retail price, when the catalogue provides one */
+    mrp?: number;
+    /** Whether the product is listed in the customer catalogue at all */
+    isActive: boolean;
+    /** Whether the shop can supply the product right now */
+    isAvailable: boolean;
+    /** Whether the product is excluded from the minimum-order calculation */
+    minOrderExempt: boolean;
+    /**
+     * Server's verdict that the product may be put in an order.
+     * Derived from isActive and isAvailable and never stored; `stock` is
+     * informational and must not be used to decide orderability.
+     */
+    isOrderable: boolean;
     /** Product creation timestamp as ISO string */
     createdAt: string;
     /** Last update timestamp as ISO string */
