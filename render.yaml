@@ -42,3 +42,29 @@ services:
         value: "0.7"
       - key: PROCESSING_TIMEOUT_MS
         value: "30000"
+      # Store configuration. src/config/storeConfig.ts validates all eight at
+      # startup and server.ts exits 1 on a ConfigError, so a deploy without
+      # them fails the health check.
+      - key: STORE_LAT
+        sync: false
+      - key: STORE_LNG
+        sync: false
+      - key: DELIVERY_RADIUS_KM
+        sync: false
+      - key: MIN_ORDER_VALUE
+        sync: false
+      # Fee amounts are per-environment and still undecided for production;
+      # the 40 / 5 in .env.example are test placeholders. The *_WAIVED_AT keys
+      # accept an empty value, which means the fee is never waived.
+      - key: DELIVERY_FEE_AMOUNT
+        sync: false
+      - key: DELIVERY_FEE_WAIVED_AT
+        sync: false
+      - key: HANDLING_FEE_AMOUNT
+        sync: false
+      - key: HANDLING_FEE_WAIVED_AT
+        sync: false
+      # Written to order.shippingAddress.state for the admin panel; the address
+      # model does not collect state.
+      - key: LEGACY_SHIPPING_STATE
+        sync: false
