@@ -226,6 +226,9 @@ pnpm --filter @mg-mart/server test:int     # Firestore emulator (needs JDK ≥ 2
 pnpm --filter @mg-mart/server seed:test    # load seed/catalog.v1.json into the emulator (or staging with --allow-project)
 ```
 
+`DEPLOY-AND-E2E.md` covers standing up an isolated instance and `pnpm --filter @mg-mart/server e2e`,
+which replays this whole contract over HTTP against a running server.
+
 `seed:test` needs `FIRESTORE_EMULATOR_HOST` (set automatically under `firebase emulators:exec`) **and**
 `FIREBASE_PROJECT_ID` (any value with the emulator, e.g. `demo-mg-mart-test`; `services/firebase.ts` requires it).
 The emulator needs a JDK ≥ 21 on `PATH`.
