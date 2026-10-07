@@ -19,7 +19,8 @@ PATH=/opt/homebrew/opt/openjdk/bin:$PATH \
   firebase emulators:start --only firestore --project demo-mg-mart-test --config ../../firebase.json
 
 # terminal 2 — seed, then the server
-export FIREBASE_PROJECT_ID=demo-mg-mart-test FIRESTORE_EMULATOR_HOST=localhost:8080 JWT_SECRET=local
+export FIREBASE_PROJECT_ID=demo-mg-mart-test FIRESTORE_EMULATOR_HOST=localhost:8080
+export JWT_SECRET="$(openssl rand -hex 16)"   # any value; it only signs this run's tokens
 pnpm --filter @mg-mart/server seed:test -- --reset
 PORT=5055 STORE_LAT=26.48872184 STORE_LNG=84.98157501 DELIVERY_RADIUS_KM=5 MIN_ORDER_VALUE=500 \
   DELIVERY_FEE_AMOUNT=40 DELIVERY_FEE_WAIVED_AT= HANDLING_FEE_AMOUNT=5 HANDLING_FEE_WAIVED_AT= \
@@ -57,8 +58,8 @@ pnpm --filter @mg-mart/server e2e -- --base-url http://localhost:5055
    The server validates all eight at startup and exits `1` on any missing or invalid value, so a
    deploy that is short one variable fails its health check instead of serving wrong prices.
 4. **Load the catalog** against that project: `FIREBASE_PROJECT_ID=<test project> pnpm --filter
-   @mg-mart/server seed:test -- --allow-project --reset`. This also creates the seed admin
-   (`seed-admin@mg.test`) the journey logs in as.
+   @mg-mart/server seed:test -- --allow-project --reset`. This also creates the admin the journey
+   logs in as, whose credentials `seed/catalog.v1.json` defines and the script reads from there.
 5. **Run the journey** against the deployed URL:
    `pnpm --filter @mg-mart/server e2e -- --base-url https://<service>.onrender.com`.
 

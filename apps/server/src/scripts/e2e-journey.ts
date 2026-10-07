@@ -15,6 +15,10 @@
  * expected bill is derived from the `appliedConfig` the deployment itself
  * returns, so the script is meaningful before the real fee values are decided.
  */
+import { randomBytes } from "crypto";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { haversineKm, destinationPoint } from "../domain/geo.js";
 
 const args = process.argv.slice(2);
@@ -37,8 +41,32 @@ const STORE = {
   lat: Number(process.env.E2E_STORE_LAT ?? 26.48872184),
   lng: Number(process.env.E2E_STORE_LNG ?? 84.98157501),
 };
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "seed-admin@mg.test";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "SeedAdmin123!";
+/**
+ * The admin the journey logs in as. The seed catalog defines it and the loader
+ * creates it, so the credentials are read from the catalog rather than repeated
+ * here; a deployment seeded from elsewhere overrides them through the env.
+ */
+const seedAdmin = (): { email: string; password: string } => {
+  const envEmail = process.env.E2E_ADMIN_EMAIL;
+  const envPassword = process.env.E2E_ADMIN_PASSWORD;
+  if (envEmail && envPassword) return { email: envEmail, password: envPassword };
+  const catalogPath = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "seed", "catalog.v1.json");
+  let admin: { email?: string; password?: string };
+  try {
+    admin = (JSON.parse(readFileSync(catalogPath, "utf8")) as { admin: { email: string; password: string } }).admin;
+  } catch (e) {
+    throw new EnvUnusable(
+      `could not read the seed admin from ${catalogPath} (${(e as Error).message}) — ` +
+        `set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD instead`
+    );
+  }
+  const email = envEmail ?? admin.email;
+  const password = envPassword ?? admin.password;
+  if (!email || !password) {
+    throw new EnvUnusable("the seed catalog names no admin; set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD");
+  }
+  return { email, password };
+};
 
 /** Seed products this journey relies on, with the prices the catalog states. */
 const P = {
@@ -133,13 +161,16 @@ let biscuitTakenOffline = false;
 
 const unique = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+/** Generated per run: the customers this journey registers outlive it by nothing. */
+const throwawayPassword = `e2e-${randomBytes(18).toString("base64url")}`;
+
 const register = async (label: string) => {
   const email = `e2e-${label}-${unique()}@mg.test`;
   const res = expectStatus(
     await call("POST", "/auth/register", {
       body: {
         email,
-        password: "e2eSecret123",
+        password: throwawayPassword,
         firstName: "E2E",
         lastName: label.toUpperCase(),
         phone: "9876543210",
@@ -242,12 +273,13 @@ const steps: Step[] = [
     async () => {
       s.a = await register("a");
       s.b = await register("b");
+      const admin = seedAdmin();
       const res = await call("POST", "/auth/login", {
-        body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+        body: { email: admin.email, password: admin.password },
       });
       if (res.status !== 200) {
         throw new EnvUnusable(
-          `seed admin ${ADMIN_EMAIL} could not log in (${res.status}) — the seed loader creates it; ` +
+          `seed admin ${admin.email} could not log in (${res.status}) — the seed loader creates it; ` +
             `run seed:test against this environment, or set E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD`
         );
       }
@@ -255,7 +287,7 @@ const steps: Step[] = [
       const adminOnly = await call("GET", "/products?includeInactive=1", { token: s.adminToken });
       if (adminOnly.status !== 200) {
         throw new EnvUnusable(
-          `${ADMIN_EMAIL} is not an admin on this deployment (includeInactive=1 → ${adminOnly.status})`
+          `${admin.email} is not an admin on this deployment (includeInactive=1 → ${adminOnly.status})`
         );
       }
     },
