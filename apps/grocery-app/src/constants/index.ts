@@ -151,10 +151,10 @@ export const STORE_CONTACT = {
   INQUIRY_MESSAGE: "Hi MG Mart, I'd like to inquire about...",
 };
 
-export const DELIVERY_FEE = 40;
-export const HANDLING_FEE = 5;
+// Fees, the minimum order value and the delivery radius are store
+// configuration. They reach the app only inside a server quote, so that a
+// change on the server takes effect without shipping a new build.
 export const ZIP_CODE = '845416';
-export const MIN_ORDER_VALUE = 500;
 
 
 export const SLOTS = [

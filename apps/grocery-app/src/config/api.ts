@@ -22,6 +22,8 @@ const apiEndpoints: ApiEndpoints = {
   // Shopping cart endpoints
   CART: {
     GET: "/cart",
+    // Authoritative bill: fees, minimum order and blockers come from the server
+    QUOTE: "/cart/quote",
     ADD_ITEM: "/cart/add",
     UPDATE_ITEM: (productId: string) => `/cart/update/${productId}`,
     REMOVE_ITEM: (productId: string) => `/cart/remove/${productId}`,

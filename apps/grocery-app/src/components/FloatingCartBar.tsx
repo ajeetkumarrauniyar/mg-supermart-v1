@@ -18,7 +18,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 const FloatingCartBar: React.FC = memo(() => {
     const navigation = useNavigation<NavigationProp>();
-    const { totalItems, grandTotal } = useCartStore();
+    const { totalItems, totalAmount } = useCartStore();
     const insets = useSafeAreaInsets();
     // Sit just above the tab bar: 54px tab icon area + actual safe area bottom
     const bottomOffset = 54 + insets.bottom + 8;
@@ -85,9 +85,14 @@ const FloatingCartBar: React.FC = memo(() => {
                 {/* Center: label */}
                 <Text style={styles.centerLabel}>View Cart</Text>
 
-                {/* Right: total + chevron */}
+                {/* Right: item subtotal + chevron. Fees are priced by the
+                    server against a delivery address, so the payable total is
+                    only known on the cart screen. */}
                 <View style={styles.right}>
-                    <Text style={styles.total}>₹{grandTotal.toFixed(0)}</Text>
+                    <View style={styles.amountGroup}>
+                        <Text style={styles.subtotalLabel}>Subtotal</Text>
+                        <Text style={styles.total}>₹{totalAmount.toFixed(0)}</Text>
+                    </View>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.8)" />
                 </View>
             </TouchableOpacity>
@@ -161,6 +166,14 @@ const styles = StyleSheet.create({
         gap: 2,
         flex: 1,
         justifyContent: 'flex-end',
+    },
+    amountGroup: {
+        alignItems: 'flex-end',
+    },
+    subtotalLabel: {
+        color: 'rgba(255,255,255,0.75)',
+        fontSize: SIZES.fontSize.tiny,
+        fontWeight: '500',
     },
     total: {
         color: '#ffffff',

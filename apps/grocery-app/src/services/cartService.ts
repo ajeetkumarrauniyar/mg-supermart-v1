@@ -1,5 +1,5 @@
 import { api } from "./apiService";
-import type { Cart, CartItem } from "@mg-mart/types";
+import type { Cart, CartItem, Quote } from "@mg-mart/types";
 
 // Cart request types
 export interface AddToCartRequest {
@@ -53,6 +53,14 @@ export const cartService = {
   // Clear entire cart
   clearCart: async (): Promise<void> => {
     await api.delete("/cart/clear");
+  },
+
+  // Authoritative bill for the current cart. Fees, the minimum order value and
+  // every blocker are server configuration; the client renders them unchanged.
+  // Omitting addressId is valid: the bill still prices correctly and reports
+  // ADDRESS_REQUIRED instead of failing.
+  quote: async (addressId?: string): Promise<Quote> => {
+    return await api.post<Quote>("/cart/quote", addressId ? { addressId } : {});
   },
 
   //TODO: Get cart summary (totals, counts, etc.)

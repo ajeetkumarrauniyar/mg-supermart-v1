@@ -1,15 +1,22 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, SIZES, MIN_ORDER_VALUE } from "../constants";
+import { COLORS, SIZES } from "../constants";
 
 interface MinOrderBannerProps {
-  currentTotal: number;
-  qualifyingAmount: number;
+  /** Bill total of the lines that count toward the minimum. */
+  eligibleAmount: number;
+  /** The minimum in force for this bill, as configured on the server. */
+  minOrderValue: number;
+  /** Eligible rupees still needed; 0 once the minimum is met. */
+  shortfall: number;
 }
 
 /**
- * Shows progress toward the ₹500 minimum order value.
+ * Shows progress toward the minimum order value.
+ *
+ * Which lines count toward the minimum is the server's decision — exempt items
+ * are already excluded from eligibleAmount — so this only renders the figures.
  *
  * States:
  *   Below minimum → amber progress bar with "Add ₹X more to place order"
@@ -18,12 +25,12 @@ interface MinOrderBannerProps {
  *
  */
 export const MinOrderBanner: React.FC<MinOrderBannerProps> = ({
-  currentTotal,
-  qualifyingAmount,
+  eligibleAmount,
+  minOrderValue,
+  shortfall,
 }) => {
-  const remaining = Math.max(0, MIN_ORDER_VALUE - qualifyingAmount);
-  const progress = Math.min(1, qualifyingAmount / MIN_ORDER_VALUE);
-  const isMet = remaining === 0;
+  const isMet = shortfall === 0;
+  const progress = minOrderValue > 0 ? Math.min(1, eligibleAmount / minOrderValue) : 1;
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -52,10 +59,10 @@ export const MinOrderBanner: React.FC<MinOrderBannerProps> = ({
         <Text style={[styles.message, isMet && styles.messageMet]}>
           {isMet
             ? "Ready to order! ✓"
-            : `Add ₹${remaining.toFixed(0)} more to place order`}
+            : `Add ₹${shortfall.toFixed(0)} more to place order`}
         </Text>
         <Text style={styles.fraction}>
-          ₹{qualifyingAmount.toFixed(0)}&nbsp;/&nbsp;₹{MIN_ORDER_VALUE}
+          ₹{eligibleAmount.toFixed(0)}&nbsp;/&nbsp;₹{minOrderValue}
         </Text>
       </View>
 

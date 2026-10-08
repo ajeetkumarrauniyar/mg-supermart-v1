@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import {
   COLORS,
@@ -18,9 +18,13 @@ import {
   SLOTS,
   PAYMENT_METHODS,
   ZIP_CODE,
-  MIN_ORDER_VALUE,
 } from '@/constants';
-import { useCartStore, useLocationStore, CartItemWithProduct } from '@/stores';
+import {
+  useCartStore,
+  useQuoteStore,
+  useLocationStore,
+  CartItemWithProduct,
+} from '@/stores';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import {
   AuthGuard,
@@ -167,6 +171,70 @@ const itemStyles = StyleSheet.create({
   },
 });
 
+// ─── Bill placeholder while the server has not priced the cart ───────────────
+
+interface QuoteNoticeProps {
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
+}
+
+/**
+ * Stands in for the bill when no quote is available. It deliberately shows no
+ * fee or total: an offline guess would disagree with what the order charges.
+ */
+const QuoteNotice: React.FC<QuoteNoticeProps> = ({ isLoading, error, onRetry }) => (
+  <View style={noticeStyles.container}>
+    {isLoading ? (
+      <>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+        <Text style={noticeStyles.text}>Calculating your bill…</Text>
+      </>
+    ) : (
+      <>
+        <Ionicons name="cloud-offline-outline" size={20} color={COLORS.warning} />
+        <Text style={noticeStyles.text}>
+          {error || 'Delivery and handling fees could not be loaded.'}
+        </Text>
+        <TouchableOpacity onPress={onRetry} style={noticeStyles.retryBtn}>
+          <Text style={noticeStyles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </>
+    )}
+  </View>
+);
+
+const noticeStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.backgroundLight,
+    marginHorizontal: SIZES.padding,
+    marginTop: 8,
+    borderRadius: SIZES.borderRadiusLarge,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  text: {
+    flex: 1,
+    fontSize: SIZES.fontSize.medium,
+    color: COLORS.textSecondary,
+  },
+  retryBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: SIZES.borderRadius,
+    backgroundColor: COLORS.primary,
+  },
+  retryText: {
+    fontSize: SIZES.fontSize.small,
+    fontWeight: SIZES.fontWeight.bold,
+    color: '#ffffff',
+  },
+});
+
 // ─── Main CartContent ─────────────────────────────────────────────────────────
 
 function CartContent() {
@@ -175,16 +243,21 @@ function CartContent() {
   const {
     items,
     totalAmount,
-    qualifyingAmount,
     totalItems,
-    deliveryFee,
-    handlingFee,
-    grandTotal,
     isLoading,
     updateItem,
     removeItem,
     clearCart,
   } = useCartStore();
+
+  const {
+    quote,
+    status: quoteStatus,
+    error: quoteError,
+    refresh: refreshQuote,
+    refreshNow: refreshQuoteNow,
+    clear: clearQuote,
+  } = useQuoteStore();
 
   const { locationName } = useLocationStore();
 
@@ -201,11 +274,39 @@ function CartContent() {
     'unknown' | 'checking' | 'valid' | 'invalid'
   >('unknown');
 
+  // ── Quote lifecycle ─────────────────────────────────────────────────────────
+
+  // Any change to the cart invalidates the bill. The store debounces, so
+  // holding the quantity stepper does not fire a request per tap.
+  useEffect(() => {
+    if (items.length === 0) {
+      clearQuote();
+      return;
+    }
+    refreshQuote();
+  }, [items, refreshQuote, clearQuote]);
+
+  // Prices and fees can change while the app sits in the background.
+  useFocusEffect(
+    useCallback(() => {
+      if (items.length > 0) void refreshQuoteNow();
+    }, [items.length, refreshQuoteNow])
+  );
+
   // ── Derived state ───────────────────────────────────────────────────────────
-  const belowMinimum = qualifyingAmount < MIN_ORDER_VALUE && qualifyingAmount > 0;
-  const remaining = Math.max(0, MIN_ORDER_VALUE - qualifyingAmount);
+
+  // Only the server knows the fees and the minimum, so nothing below is
+  // computed locally. ADDRESS_REQUIRED and ADDRESS_NOT_SERVICEABLE blockers are
+  // not consulted yet: the app keeps no server-side addresses, so delivery is
+  // still gated on the verified GPS location below.
+  const bill = quote?.bill ?? null;
+  const belowMinimum = bill !== null && !bill.minOrderMet;
+  const remaining = bill?.shortfall ?? 0;
   const canPlaceOrder =
-    items.length > 0 && qualifyingAmount >= MIN_ORDER_VALUE && locationStatus === 'valid';
+    items.length > 0 &&
+    bill !== null &&
+    bill.minOrderMet &&
+    locationStatus === 'valid';
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -290,11 +391,21 @@ function CartContent() {
   const handlePlaceOrder = useCallback(async () => {
     if (items.length === 0) return;
 
-    // ── ₹500 minimum guard ──────────────────────────────────────────────────
-    if (qualifyingAmount < MIN_ORDER_VALUE) {
+    // Without a bill the payable total is unknown, so there is nothing to
+    // confirm to the customer before charging them.
+    if (!bill) {
       Alert.alert(
-        'Minimum order ₹500',
-        `Add ₹${remaining.toFixed(0)} more to place your order.`
+        'Bill unavailable',
+        'We could not work out your total just now. Please check your connection and try again.'
+      );
+      void refreshQuoteNow();
+      return;
+    }
+
+    if (!bill.minOrderMet) {
+      Alert.alert(
+        `Minimum order ₹${bill.minOrderValue}`,
+        `Add ₹${bill.shortfall.toFixed(0)} more to place your order.`
       );
       return;
     }
@@ -341,8 +452,8 @@ function CartContent() {
     }
   }, [
     items,
-    totalAmount,
-    remaining,
+    bill,
+    refreshQuoteNow,
     locationStatus,
     selectedPayment,
     selectedSlot,
@@ -374,13 +485,16 @@ function CartContent() {
         )}
 
         <View style={footerStyles.row}>
-          {/* Total */}
+          {/* Total. Falls back to the item subtotal while the bill is
+              unavailable, labelled so it is not read as the payable amount. */}
           <View style={footerStyles.totalArea}>
             <Text style={footerStyles.totalPrice}>
-              ₹{grandTotal.toFixed(0)}
+              ₹{(bill ? bill.total : totalAmount).toFixed(0)}
             </Text>
             <Text style={footerStyles.totalSub}>
-              {totalItems} {totalItems === 1 ? 'item' : 'items'}
+              {bill
+                ? `${totalItems} ${totalItems === 1 ? 'item' : 'items'}`
+                : 'Subtotal · fees pending'}
             </Text>
           </View>
 
@@ -425,7 +539,8 @@ function CartContent() {
     items.length,
     belowMinimum,
     remaining,
-    grandTotal,
+    bill,
+    totalAmount,
     totalItems,
     canPlaceOrder,
     isPlacingOrder,
@@ -439,16 +554,23 @@ function CartContent() {
 
     return (
       <>
-        {/* ₹500 minimum progress banner */}
-        <MinOrderBanner currentTotal={totalAmount} qualifyingAmount={qualifyingAmount} />
-
-        {/* Bill */}
-        <BillSummary
-          totalAmount={totalAmount}
-          deliveryFee={deliveryFee}
-          handlingFee={handlingFee}
-          grandTotal={grandTotal}
-        />
+        {/* Minimum order progress and bill, both straight from the quote */}
+        {bill ? (
+          <>
+            <MinOrderBanner
+              eligibleAmount={bill.eligibleAmount}
+              minOrderValue={bill.minOrderValue}
+              shortfall={bill.shortfall}
+            />
+            <BillSummary bill={bill} />
+          </>
+        ) : (
+          <QuoteNotice
+            isLoading={quoteStatus === 'loading' || quoteStatus === 'idle'}
+            error={quoteError}
+            onRetry={() => void refreshQuoteNow()}
+          />
+        )}
 
         {/* Address */}
         <AddressSection
@@ -479,10 +601,10 @@ function CartContent() {
     );
   }, [
     items.length,
-    totalAmount,
-    deliveryFee,
-    handlingFee,
-    grandTotal,
+    bill,
+    quoteStatus,
+    quoteError,
+    refreshQuoteNow,
     locationName,
     locationStatus,
     isValidatingLocation,

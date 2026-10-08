@@ -17,6 +17,7 @@ export interface ProductEndpoints {
 
 export interface CartEndpoints {
   GET: string;
+  QUOTE: string;
   ADD_ITEM: string;
   UPDATE_ITEM: (productId: string) => string;
   REMOVE_ITEM: (productId: string) => string;

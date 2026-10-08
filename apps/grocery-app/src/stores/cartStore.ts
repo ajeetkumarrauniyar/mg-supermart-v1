@@ -4,7 +4,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CartItem, Product } from "@mg-mart/types";
 import { cartService } from "../services";
 import { useProductStore } from "./productStore";
-import { DELIVERY_FEE, HANDLING_FEE } from "../constants";
 
 export interface CartItemWithProduct extends CartItem {
   productId: string;
@@ -21,12 +20,8 @@ export interface CartItemWithProduct extends CartItem {
 export interface CartStore {
   // State
   items: CartItemWithProduct[];
-  totalAmount: number;    // subtotal (items only)
-  qualifyingAmount: number; // excluding oil/sugar
+  totalAmount: number;    // subtotal of the items, at the prices last synced
   totalItems: number;
-  deliveryFee: number;    // 0 if cart empty, else DELIVERY_FEE
-  handlingFee: number;    // 0 if cart empty, else HANDLING_FEE
-  grandTotal: number;     // totalAmount + deliveryFee + handlingFee
   isLoading: boolean;
   error: string | null;
   lastSyncTime: number | null;
@@ -48,11 +43,7 @@ export const useCartStore = create<CartStore>()(
       // Initial state
       items: [],
       totalAmount: 0,
-      qualifyingAmount: 0,
       totalItems: 0,
-      deliveryFee: 0,
-      handlingFee: 0,
-      grandTotal: 0,
       isLoading: false,
       error: null,
       lastSyncTime: null,
@@ -94,6 +85,10 @@ export const useCartStore = create<CartStore>()(
           } else {
             // Add new item with product details
             console.log("➕ Adding new item to cart");
+            // Orderability is optimistic here, from the catalog copy we hold.
+            // The quote re-derives both flags server-side before anything is
+            // priced or ordered, so a stale catalog cannot let a blocked line
+            // through or wrongly exempt one from the minimum.
             const newItem: CartItemWithProduct = {
               productId: product.productId,
               quantity,
@@ -103,6 +98,8 @@ export const useCartStore = create<CartStore>()(
               imageUrl: product.imageUrl || '',
               unit: product.unit,
               name: product.name,
+              isOrderable: product.isOrderable ?? true,
+              minOrderExempt: product.minOrderExempt ?? false,
             };
             updatedItems = [...items, newItem];
           }
@@ -299,24 +296,14 @@ export const useCartStore = create<CartStore>()(
         get().calculateTotals();
       },
 
+      // Item counts and their subtotal only. Fees, the minimum order value and
+      // the payable total are priced by the server and live in the quote store.
       calculateTotals: () => {
         const { items } = get();
         const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0);
-
-        const qualifyingAmount = items.reduce((sum, item) => {
-          const cat = (item.category || '').toLowerCase();
-          const name = (item.name || '').toLowerCase();
-          const isExcluded = cat.includes('oil') || cat.includes('sugar') || name.includes('oil') || name.includes('sugar');
-          return sum + (isExcluded ? 0 : item.subtotal);
-        }, 0);
-
         const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-        const hasItems = totalItems > 0;
-        const deliveryFee = hasItems ? DELIVERY_FEE : 0;
-        const handlingFee = hasItems ? HANDLING_FEE : 0;
-        const grandTotal = totalAmount + deliveryFee + handlingFee;
 
-        set({ totalAmount, qualifyingAmount, totalItems, deliveryFee, handlingFee, grandTotal });
+        set({ totalAmount, totalItems });
       },
 
       clearError: () => {
@@ -329,11 +316,7 @@ export const useCartStore = create<CartStore>()(
       partialize: (state) => ({
         items: state.items,
         totalAmount: state.totalAmount,
-        qualifyingAmount: state.qualifyingAmount,
         totalItems: state.totalItems,
-        deliveryFee: state.deliveryFee,
-        handlingFee: state.handlingFee,
-        grandTotal: state.grandTotal,
         lastSyncTime: state.lastSyncTime,
       }),
       onRehydrateStorage: () => (state) => {
