@@ -46,16 +46,19 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
         );
     }
 
+    // Only a lower bound: the catalogue's stock figures are not reliable, so an
+    // upper limit here would be invented. The quote blocks a line the shop
+    // cannot actually supply.
     const handleQuantityChange = (delta: number) => {
         const newQuantity = quantity + delta;
-        if (newQuantity >= 1 && newQuantity <= product.stock) {
+        if (newQuantity >= 1) {
             setQuantity(newQuantity);
         }
     };
 
     const handleAddToCart = async () => {
-        if (product.stock <= 0) {
-            Alert.alert('Out of Stock', 'This product is currently unavailable');
+        if (!product.isOrderable) {
+            Alert.alert('Unavailable', 'This product is currently unavailable');
             return;
         }
 
@@ -82,7 +85,7 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
     const isWishlisted = isInWishlist(product.productId);
 
     const totalPrice = product.price * quantity;
-    const isOutOfStock = product.stock <= 0;
+    const isUnavailable = !product.isOrderable;
 
     return (
         <ScreenContainer
@@ -107,9 +110,9 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                         <Text style={styles.totalPrice}>₹{totalPrice.toFixed(2)}</Text>
                     </View>
                     <TouchableOpacity
-                        style={[styles.addToCartButton, (isOutOfStock || isAddingToCart) && styles.addToCartButtonDisabled]}
+                        style={[styles.addToCartButton, (isUnavailable || isAddingToCart) && styles.addToCartButtonDisabled]}
                         onPress={handleAddToCart}
-                        disabled={isOutOfStock || isAddingToCart}
+                        disabled={isUnavailable || isAddingToCart}
                         activeOpacity={0.8}
                     >
                         {isAddingToCart ? (
@@ -118,7 +121,7 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                             <Ionicons name="cart-outline" size={20} color={COLORS.white} />
                         )}
                         <Text style={styles.addToCartText}>
-                            {isOutOfStock ? 'Out of Stock' : isAddingToCart ? 'Adding...' : 'Add to Cart'}
+                            {isUnavailable ? 'Unavailable' : isAddingToCart ? 'Adding...' : 'Add to Cart'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -131,9 +134,9 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                     style={styles.productImage}
                     resizeMode="cover"
                 />
-                {isOutOfStock && (
+                {isUnavailable && (
                     <View style={styles.outOfStockBadge}>
-                        <Text style={styles.outOfStockText}>Out of Stock</Text>
+                        <Text style={styles.outOfStockText}>Unavailable</Text>
                     </View>
                 )}
             </View>
@@ -155,11 +158,9 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                             <Text style={styles.productUnit}> /{product.unit}</Text>
                         </Text>
                     </View>
-                    {!isOutOfStock && (
+                    {!isUnavailable && (
                         <View style={styles.stockBadge}>
-                            <Text style={styles.stockText}>
-                                {product.stock} {product.unit} available
-                            </Text>
+                            <Text style={styles.stockText}>Available</Text>
                         </View>
                     )}
                 </View>
@@ -173,7 +174,7 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                 )}
 
                 {/* Quantity Selector */}
-                {!isOutOfStock && (
+                {!isUnavailable && (
                     <View style={styles.quantitySection}>
                         <Text style={styles.sectionTitle}>Quantity</Text>
                         <View style={styles.quantityControls}>
@@ -195,15 +196,13 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
                             <TouchableOpacity
                                 style={[
                                     styles.quantityButton,
-                                    quantity >= product.stock && styles.quantityButtonDisabled,
                                 ]}
                                 onPress={() => handleQuantityChange(1)}
-                                disabled={quantity >= product.stock}
                             >
                                 <Ionicons
                                     name="add"
                                     size={20}
-                                    color={quantity >= product.stock ? '#cbd5e0' : COLORS.text}
+                                    color={COLORS.text}
                                 />
                             </TouchableOpacity>
                         </View>

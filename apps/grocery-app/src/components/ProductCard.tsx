@@ -58,9 +58,9 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onPress 
                     color={isWishlisted ? "#e53e3e" : "#4a5568"}
                 />
             </TouchableOpacity>
-            {product.stock <= 0 && (
+            {!product.isOrderable && (
                 <View style={styles.outOfStockBadge}>
-                    <Text style={styles.outOfStockText}>Out of Stock</Text>
+                    <Text style={styles.outOfStockText}>Unavailable</Text>
                 </View>
             )}
             {product.isFeatured && (
@@ -78,13 +78,11 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({ product, onPress 
                 <View style={styles.footer}>
                     <View>
                         <Text style={styles.price}>₹{product.price.toFixed(0)}</Text>
-                        <Text style={styles.stockText}>
-                            {product.stock > 0 ? `${product.stock} ${product.unit}` : 'Out of stock'}
-                        </Text>
+                        <Text style={styles.stockText}>{product.unit}</Text>
                     </View>
                     <CartQuantityStepper
                         productId={product.productId}
-                        stock={product.stock}
+                        isOrderable={product.isOrderable}
                         compact
                     />
                 </View>

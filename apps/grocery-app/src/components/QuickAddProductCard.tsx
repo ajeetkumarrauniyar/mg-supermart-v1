@@ -45,7 +45,7 @@ export const QuickAddProductCard: React.FC<QuickAddProductCardProps> = ({
                     <Text style={styles.price}>₹{product.price.toFixed(0)}</Text>
                     <CartQuantityStepper
                         productId={product.productId}
-                        stock={product.stock}
+                        isOrderable={product.isOrderable}
                         compact
                     />
                 </View>

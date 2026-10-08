@@ -61,12 +61,12 @@ const WishlistCard: React.FC<WishlistCardProps> = ({
         <View style={styles.cardFooter}>
           <Text style={styles.price}>₹{product.price.toFixed(0)}</Text>
           <TouchableOpacity
-            style={[styles.addBtn, product.stock <= 0 && styles.disabledBtn]}
+            style={[styles.addBtn, !product.isOrderable && styles.disabledBtn]}
             onPress={onAddToCart}
-            disabled={product.stock <= 0}
+            disabled={!product.isOrderable}
           >
             <Text style={styles.addBtnText}>
-              {product.stock > 0 ? "Add to Cart" : "Out of Stock"}
+              {product.isOrderable ? "Add to Cart" : "Unavailable"}
             </Text>
           </TouchableOpacity>
         </View>

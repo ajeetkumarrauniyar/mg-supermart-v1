@@ -8,7 +8,8 @@ import { addToCartFeedback } from '../utils/haptics';
 
 interface CartQuantityStepperProps {
     productId: string;
-    stock: number;
+    /** The server's verdict that this product may be ordered. */
+    isOrderable: boolean;
     compact?: boolean;
 }
 
@@ -20,7 +21,7 @@ interface CartQuantityStepperProps {
  */
 export const CartQuantityStepper: React.FC<CartQuantityStepperProps> = memo(({
     productId,
-    stock,
+    isOrderable,
     compact = false,
 }) => {
     const { items, addItem, updateItem, removeItem } = useCartStore();
@@ -82,18 +83,20 @@ export const CartQuantityStepper: React.FC<CartQuantityStepperProps> = memo(({
     }, [quantity, cartItem]);
 
     const handleAdd = useCallback(() => {
-        if (stock <= 0) return;
+        if (!isOrderable) return;
         requireAuth(() => {
             addToCartFeedback();
             addItem(productId, 1);
         });
-    }, [productId, stock, addItem, requireAuth]);
+    }, [productId, isOrderable, addItem, requireAuth]);
 
+    // No client-side ceiling: the catalogue's stock figures are not reliable,
+    // so any limit here would be invented. The quote blocks a line the shop
+    // cannot actually supply.
     const handleIncrease = useCallback(() => {
-        if (quantity >= stock) return;
         addToCartFeedback();
         updateItem(productId, quantity + 1);
-    }, [productId, quantity, stock, updateItem]);
+    }, [productId, quantity, updateItem]);
 
     const handleDecrease = useCallback(() => {
         if (quantity <= 1) {
@@ -103,12 +106,12 @@ export const CartQuantityStepper: React.FC<CartQuantityStepperProps> = memo(({
         }
     }, [productId, quantity, updateItem, removeItem]);
 
-    // ─── Out of stock ────────────────────────────────────────────────────────────
-    if (stock <= 0) {
+    // ─── Not orderable ───────────────────────────────────────────────────────────
+    if (!isOrderable) {
         return (
             <View style={[styles.unavailableButton, compact && styles.compactUnavailable]}>
                 <Text style={[styles.unavailableText, compact && styles.compactText]}>
-                    Out of Stock
+                    Unavailable
                 </Text>
             </View>
         );
@@ -191,11 +194,9 @@ export const CartQuantityStepper: React.FC<CartQuantityStepperProps> = memo(({
                     style={[
                         styles.stepperButton,
                         compact && styles.compactStepperButton,
-                        quantity >= stock && styles.stepperButtonDisabled,
                     ]}
                     onPress={handleIncrease}
                     activeOpacity={0.7}
-                    disabled={quantity >= stock}
                 >
                     <Ionicons
                         name="add"

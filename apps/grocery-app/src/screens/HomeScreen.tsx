@@ -54,8 +54,8 @@ export default function HomeScreen() {
 
   const handleAddToCart = useCallback(
     (product: Product) => {
-      if (product.stock <= 0) {
-        Alert.alert("Out of Stock", "This product is currently unavailable");
+      if (!product.isOrderable) {
+        Alert.alert("Unavailable", "This product is currently unavailable");
         return;
       }
       addItem(product.productId, 1);
